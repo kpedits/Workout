@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<link rel="manifest" href="manifest.json">
+<title>Today's Workout</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f4f6;color:#111827;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+header{background:#111827;color:#fff;padding:20px 16px}main{max-width:680px;margin:auto;padding:16px 16px 40px}
+.card{background:#fff;border-radius:16px;padding:17px;margin:12px 0;box-shadow:0 2px 10px #0001}
+h1,h2,h3{margin:0 0 8px}.muted{color:#6b7280;font-size:14px}.exercise{border-top:1px solid #eee;padding:15px 0}
+.exercise:first-child{border-top:0}.target{font-size:14px;color:#6b7280;margin-bottom:10px}
+.sets{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}label{font-size:12px;color:#6b7280}
+input{width:100%;padding:11px;border:1px solid #d1d5db;border-radius:9px;font:inherit;margin-top:4px}
+button{width:100%;padding:13px;border:0;border-radius:10px;background:#111827;color:#fff;font:inherit;font-weight:600}
+.success{background:#ecfdf5;color:#166534;border-radius:12px;padding:13px;margin-top:12px}
+.history{font-size:14px}.history div{padding:8px 0;border-bottom:1px solid #eee}
+</style>
+</head>
+<body>
+<header><h1>Today's Workout</h1><div id="date" class="muted" style="color:#cbd5e1"></div></header>
+<main>
+<section class="card">
+<h2>Workout Plan</h2>
+<div id="workout"></div>
+<button id="done">DONE — Save Workout</button>
+<div id="message"></div>
+</section>
+<section class="card">
+<h3>Saved results</h3>
+<div id="history" class="history"></div>
+</section>
+</main>
+<script>
+const PLAN={
+ "Push-ups":{sets:3,target:10,unit:"reps"},
+ "Bodyweight Squats":{sets:3,target:12,unit:"reps"},
+ "Plank":{sets:3,target:30,unit:"sec"}
+};
+const key="workoutResultsV1";
+const date=new Date().toISOString().slice(0,10);
+document.getElementById("date").textContent=new Date().toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+function getResults(){try{return JSON.parse(localStorage.getItem(key)||"[]")}catch(e){return[]}}
+function render(){
+ const saved=getResults().find(x=>x.date===date);
+ let html="";
+ Object.entries(PLAN).forEach(([name,p])=>{
+   const vals=saved?.exercises?.[name]?.values||Array(p.sets).fill(p.target);
+   html+=`<div class="exercise"><h3>${name}</h3><div class="target">Target: ${p.sets} × ${p.target} ${p.unit}</div><div class="sets">`;
+   for(let i=0;i<p.sets;i++) html+=`<label>Set ${i+1}<input type="number" min="0" step="1" inputmode="numeric" data-ex="${name}" data-set="${i}" value="${vals[i]??p.target}"></label>`;
+   html+="</div></div>";
+ });
+ document.getElementById("workout").innerHTML=html;
+ renderHistory();
+ if(saved)document.getElementById("message").innerHTML='<div class="success">✓ Today’s workout is already saved. You can update it and press DONE again.</div>';
+}
+function renderHistory(){
+ const h=getResults().sort((a,b)=>b.date.localeCompare(a.date));
+ document.getElementById("history").innerHTML=h.length?h.slice(0,10).map(x=>{
+   const parts=Object.entries(x.exercises).map(([n,d])=>`${n}: ${d.values.join(" / ")}`).join("<br>");
+   return `<div><b>${x.date}</b><br>${parts}</div>`;
+ }).join(""):"<span class='muted'>No saved workouts yet.</span>";
+}
+document.getElementById("done").onclick=()=>{
+ const data={date,completedAt:new Date().toISOString(),exercises:{}};
+ Object.entries(PLAN).forEach(([name,p])=>{
+   data.exercises[name]={values:Array.from({length:p.sets},(_,i)=>{
+     const el=document.querySelector(`[data-ex="${CSS.escape(name)}"][data-set="${i}"]`);
+     return Number(el?.value||0);
+   })};
+ });
+ const all=getResults().filter(x=>x.date!==date);all.push(data);
+ localStorage.setItem(key,JSON.stringify(all));
+ document.getElementById("message").innerHTML='<div class="success">✓ Workout saved locally on this device.</div>';
+ renderHistory();
+};
+render();
+if("serviceWorker"in navigator)navigator.serviceWorker.register("./sw.js").catch(()=>{});
+</script>
+</body>
+</html>
