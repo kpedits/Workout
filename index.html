@@ -15,7 +15,7 @@ canvas{width:100%;height:230px;border:1px solid #eee;border-radius:10px}.stats{d
 <header><h1>Today's Workout</h1><div id="date" class="muted" style="color:#cbd5e1"></div></header><main>
 <section class="card"><h2>Workout</h2><div id="workout"></div><button id="save">✓ DONE — SAVE WORKOUT</button><div id="msg"></div></section>
 <section class="card"><h2>Progress</h2><div id="stats" class="stats"></div><br><select id="pick"></select><canvas id="graph" width="700" height="260"></canvas></section>
-<section class="card"><h2>History & Edit</h2><div id="history"></div></section>
+<section class="card"><h2>⚙️ Timer Settings</h2><div id="settings"></div><button id="saveSettings">Save Timer Settings</button><p class="muted">Settings are saved only in this browser and do not change workout history.</p></section><section class="card"><h2>History & Edit</h2><div id="history"></div></section>
 <section class="card"><h2>Data</h2><div class="row"><button id="export">Export</button><button id="import" class="alt">Import</button><button id="clear">Clear</button></div><input id="file" type="file" accept="application/json" hidden><p class="muted">Results stay in this browser.</p></section>
 </main>
 <script>
@@ -25,7 +25,7 @@ const PLAN={
 "Plank":{kind:"sets",sets:3,target:30,unit:"sec",rest:60},
 "Treadmill":{kind:"timer",target:1200},
 "Skipping":{kind:"timer",target:300}
-},KEY="workoutResultsV3",TODAY=new Date().toISOString().slice(0,10),$=x=>document.getElementById(x);
+},KEY="workoutResultsV3",SETKEY="workoutTimerSettingsV1",TODAY=new Date().toISOString().slice(0,10),$=x=>document.getElementById(x);
 $("date").textContent=new Date().toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"long",day:"numeric"});
 let intervals={};
 
@@ -35,17 +35,46 @@ function fmt(s){s=Math.max(0,Math.round(s));return String(Math.floor(s/60)).padS
 function notify(t,b){if("Notification"in window&&Notification.permission==="granted")new Notification(t,{body:b})}
 function askNotify(){if("Notification"in window&&Notification.permission==="default")Notification.requestPermission()}
 
+function getSettings(){
+  const d={};
+  try{Object.assign(d,JSON.parse(localStorage.getItem(SETKEY)||"{}"))}catch{}
+  for(const [n,p] of Object.entries(PLAN)){
+    if(!(n in d)) d[n]=p.kind==="sets"?p.rest:p.target;
+  }
+  return d;
+}
+function saveSettings(){
+  const d={};
+  for(const [n,p] of Object.entries(PLAN)){
+    const el=document.getElementById("setting-"+btoa(n));
+    let v=Math.max(1,Number(el.value)||1);
+    d[n]=v;
+  }
+  localStorage.setItem(SETKEY,JSON.stringify(d));
+  renderSettings(); render();
+  $("msg").innerHTML='<div class="ok">✓ Timer settings saved locally.</div>';
+}
+function renderSettings(){
+  const d=getSettings();
+  let out="";
+  for(const [n,p] of Object.entries(PLAN)){
+    const unit=p.kind==="sets"?"sec":"min";
+    const value=p.kind==="sets"?d[n]:Math.round(d[n]/60);
+    out+=`<div class="row" style="align-items:center"><label style="flex:2">${n} ${p.kind==="sets"?"rest":"duration"}<input id="setting-${btoa(n)}" type="number" min="1" value="${value}"></label><span class="muted">${unit}</span></div>`;
+  }
+  $("settings").innerHTML=out;
+}
 function render(){
-let saved=load().find(x=>x.date===TODAY),out="";
+let saved=load().find(x=>x.date===TODAY),out="",settings=getSettings();
 for(const [name,p] of Object.entries(PLAN)){
 if(p.kind==="sets"){
 let vals=saved?.exercises?.[name]?.values||Array(p.sets).fill(p.target), done=saved?.exercises?.[name]?.done||[];
-out+=`<div class="exercise"><h3>${name}</h3><div class="muted">Target: ${p.sets} × ${p.target} ${p.unit} · Rest ${fmt(p.rest)}</div><div class="sets">`;
+out+=`<div class="exercise"><h3>${name}</h3><div class="muted">Target: ${p.sets} × ${p.target} ${p.unit} · Rest ${fmt(settings[name])}</div><div class="sets">`;
 for(let i=0;i<p.sets;i++)out+=`<label>Set ${i+1}<input data-v="${name}" data-i="${i}" type="number" min="0" value="${vals[i]??p.target}"><span><input type="checkbox" data-d="${name}" data-i="${i}" ${done[i]?"checked":""}> done</span></label>`;
-out+=`</div><div class="timerbox"><div class="timer" id="r${btoa(name)}">${fmt(p.rest)}</div><div class="row"><button class="alt" onclick="restStart('${name}',${p.rest})">▶ Rest</button><button class="alt" onclick="restReset('${name}',${p.rest})">↻ Reset</button></div></div></div>`;
+out+=`</div><div class="timerbox"><div class="timer" id="r${btoa(name)}">${fmt(settings[name])}</div><div class="row"><button class="alt" onclick="restStart('${name}',${settings[name]})">▶ Rest</button><button class="alt" onclick="restReset('${name}',${settings[name]})">↻ Reset</button></div></div></div>`;
 }else{
-let val=saved?.exercises?.[name]?.duration??p.target;
-out+=`<div class="exercise"><h3>${name}</h3><div class="muted">Target: ${fmt(p.target)}</div><div class="timerbox"><div class="timer" id="m${btoa(name)}">${fmt(val)}</div><div class="row"><button onclick="mainStart('${name}')">▶ Start</button><button class="alt" onclick="mainPause('${name}')">⏸ Pause</button><button class="alt" onclick="mainReset('${name}',${p.target})">↻ Reset</button></div></div></div>`;
+let val=saved?.exercises?.[name]?.duration??settings[name];
+out+=`<div class="exercise"><h3>${name}</h3><div class="muted">Target: ${fmt(settings[name])}</div><div class="timerbox"><div class="timer" id="m${btoa(name)}">${fmt(val)}</div><div class="row"><button onclick="mainStart('${name}')">▶ Start</button><button class="alt" onclick="mainPause('${name}')">⏸ Pause</button><button class="alt" onclick="mainReset('${name}',${settings[name]})">↻ Reset</button></div></div></div>`;
 }}
 $("workout").innerHTML=out;if(saved)$("msg").innerHTML='<div class="ok">✓ Saved today. You can update and save again.</div>';
 }
@@ -56,6 +85,7 @@ window.mainStart=n=>{askNotify();clearInterval(intervals["m"+n]);let el=$("m"+bt
 window.mainPause=n=>clearInterval(intervals["m"+n])
 window.mainReset=(n,s)=>{clearInterval(intervals["m"+n]);$("m"+btoa(n)).textContent=fmt(s)}
 
+$("saveSettings").onclick=saveSettings;
 $("save").onclick=()=>{
 askNotify();let data={date:TODAY,completedAt:new Date().toISOString(),exercises:{}};
 for(const [n,p] of Object.entries(PLAN)){
@@ -84,9 +114,9 @@ $("pick").onchange=draw;
 $("export").onclick=()=>{let b=new Blob([JSON.stringify(load(),null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="workout-backup.json";a.click()}
 $("import").onclick=()=>$("file").click();
 $("file").onchange=async e=>{try{let x=JSON.parse(await e.target.files[0].text());if(!Array.isArray(x))throw 0;store(x);render();renderHistory();renderStats();renderPick();draw();alert("Imported")}catch{alert("Invalid backup")}}
-$("clear").onclick=()=>{if(confirm("Delete all workout data?")){localStorage.removeItem(KEY);render();renderHistory();renderStats();renderPick();draw()}}
+$("clear").onclick=()=>{if(confirm("Delete all workout data?")){localStorage.removeItem(KEY);renderSettings();render();renderHistory();renderStats();renderPick();draw()}}
 
 function seed(){if(localStorage.getItem(KEY))return;let a=[];for(let i=3;i>=1;i--){let d=new Date();d.setDate(d.getDate()-i);let n=3-i,date=d.toISOString().slice(0,10);a.push({date,exercises:{"Push-ups":{values:[8+n,8+n,7+n],done:[1,1,1]},"Bodyweight Squats":{values:[10+n,11+n,10+n],done:[1,1,1]},"Plank":{values:[25+n*2,25+n*2,20+n*2],done:[1,1,1]},"Treadmill":{duration:900+n*60},"Skipping":{duration:240+n*20}}})}store(a)}
-seed();render();renderHistory();renderStats();renderPick();draw();
+seed();renderSettings();render();renderHistory();renderStats();renderPick();draw();
 if("serviceWorker"in navigator)navigator.serviceWorker.register("./sw.js").catch(()=>{});
 </script></body></html>

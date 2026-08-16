@@ -1,5 +1,7 @@
-# Workout Tracker v3
-Strength exercises: default target + actual sets + checkboxes + rest timer.
-Treadmill/skipping: countdown timers.
-Includes local save, edit/delete, JSON backup, stats, graph, and 3 days dummy data.
-Upload index.html, manifest.json and sw.js to the root of GitHub Pages.
+# Workout Tracker v4
+- All timers are editable locally.
+- Strength rest timers: Push-ups, Squats, Plank.
+- Main workout duration timers: Treadmill, Skipping.
+- Timer settings are stored separately from workout history.
+- Includes local workout save, edit/delete, JSON backup, stats, graph and 3-day dummy data.
+Upload index.html, manifest.json and sw.js to GitHub Pages.
