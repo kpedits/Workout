@@ -100,22 +100,22 @@ function adaptive(day,name,fallback){
  return e.completed??fallback;
 }
 function renderSettings(){
- let day=+dayPick.value,d=defaults(),out="";
+ let day=+document.getElementById('dayPick').value,d=defaults(),out="";
  PROGRAM[day].items.forEach((it,i)=>out+=`<label>${it[0]} default (${it[1]==="reps"?"reps":"sec"})<input id="s${i}" type="number" min="1" value="${d[day+"|"+it[0]]}"></label>`);
  out+=`<label>Round rest (sec)<input id="roundRest" type="number" min="1" value="${d[day+"|roundRest"]}"></label>
  <label>Transition (sec)<input id="transition" type="number" min="1" value="${d.transition}"></label>
  <label>Active recovery / skipping (sec)<input id="activeRecovery" type="number" min="1" value="${d.activeRecovery}"></label>`;
- settings.innerHTML=out;
+ document.getElementById('settings').innerHTML=out;
 }
-function saveSettings(){
- let day=+dayPick.value,d=defaults();
+function saveDefaultSettings(){
+ let day=+document.getElementById('dayPick').value,d=defaults();
  PROGRAM[day].items.forEach((it,i)=>d[day+"|"+it[0]]=Math.max(1,+document.getElementById("s"+i).value||1));
  d[day+"|roundRest"]=Math.max(1,+roundRest.value||1);d.transition=Math.max(1,+transition.value||1);d.activeRecovery=Math.max(1,+activeRecovery.value||1);
- saveDefaults(d);render();renderSettings();msg.innerHTML='<div class="ok">✓ Default settings saved.</div>';
+ saveDefaults(d);render();renderSettings();document.getElementById('msg').innerHTML='<div class="ok">✓ Default settings saved.</div>';
 }
 function render(){
- let day=+dayPick.value,p=PROGRAM[day],d=defaults(),date=new Date().toISOString().slice(0,10),saved=load().find(x=>x.date===date&&x.day===day);
- dayTitle.textContent=`Day ${day}: ${p.name}`;dayMeta.textContent=p.rounds?`${p.rounds} rounds · Round rest ${d[day+"|roundRest"]} sec`:"Complete reset";
+ let day=+document.getElementById('dayPick').value,p=PROGRAM[day],d=defaults(),date=new Date().toISOString().slice(0,10),saved=load().find(x=>x.date===date&&x.day===day);
+ document.getElementById('dayTitle').textContent=`Day ${day}: ${p.name}`;document.getElementById('dayMeta').textContent=p.rounds?`${p.rounds} rounds · Round rest ${d[day+"|roundRest"]} sec`:"Complete reset";
  let out="";
  p.items.forEach((it,i)=>{
    let name=it[0],def=d[day+"|"+name],ad=adaptive(day,name,def);
@@ -132,32 +132,32 @@ function render(){
    }
  });
  out+=`<div class="muted"><b>Transition:</b> ${d.transition}s · <b>Active recovery:</b> ${d.activeRecovery}s</div>`;
- workout.innerHTML=out;
+ document.getElementById('workout').innerHTML=out;
 }
 function startTimer(i){clearInterval(timers[i]);let el=document.getElementById("timer"+i),cur=+document.getElementById("completed"+i).value||0,end=Date.now()+cur*1000;timers[i]=setInterval(()=>{let x=Math.max(0,Math.ceil((end-Date.now())/1000));el.textContent=fmt(x);if(!x)clearInterval(timers[i])},250)}
 function pauseTimer(i){clearInterval(timers[i])}
 function resetTimer(i,s){clearInterval(timers[i]);document.getElementById("timer"+i).textContent=fmt(s);document.getElementById("completed"+i).value=s}
 function saveWorkout(){
- let day=+dayPick.value,p=PROGRAM[day],date=new Date().toISOString().slice(0,10),data={date,day,completedAt:new Date().toISOString(),exercises:{}};
+ let day=+document.getElementById('dayPick').value,p=PROGRAM[day],date=new Date().toISOString().slice(0,10),data={date,day,completedAt:new Date().toISOString(),exercises:{}};
  p.items.forEach((it,i)=>{let name=it[0];
    if(it[1]==="reps"){
      let sets=[...document.querySelectorAll(`[data-name="${encodeURIComponent(name)}"]`)].map((x,r)=>({reps:+x.value||0,done:document.querySelector(`[data-done="${encodeURIComponent(name)}"][data-r="${r}"]`).checked}));
      data.exercises[name]={kind:"reps",sets,target:[it[2],it[3]]};
    }else data.exercises[name]={kind:"time",completed:+document.getElementById("completed"+i).value||0,done:document.getElementById("doneTime"+i).checked,target:it[3]};
  });
- let a=load().filter(x=>!(x.date===date&&x.day===day));a.push(data);store(a);msg.innerHTML='<div class="ok">✓ Saved. Your completed sets will influence future defaults.</div>';renderHistory();renderStats();renderProgress();
+ let a=load().filter(x=>!(x.date===date&&x.day===day));a.push(data);store(a);document.getElementById('msg').innerHTML='<div class="ok">✓ Saved. Your completed sets will influence future defaults.</div>';renderHistory();renderStats();renderProgress();
 }
-function renderHistory(){let a=load().sort((x,y)=>y.date.localeCompare(x.date));history.innerHTML=a.length?a.map(x=>`<div class="history"><b>${x.date} — Day ${x.day}</b><br>${Object.entries(x.exercises).map(([n,e])=>e.kind==="reps"?`${n}: ${e.sets.map(s=>s.reps+(s.done?" ✓":"")).join(" / ")}`:`${n}: ${fmt(e.completed)}${e.done?" ✓":""}`).join("<br>")}</div>`).join(""):"<span class='muted'>No saved workouts.</span>"}
-function renderStats(){let a=load(),sets=a.reduce((z,x)=>z+Object.values(x.exercises).reduce((q,e)=>q+(e.kind==="reps"?e.sets.length:0),0),0);stats.innerHTML=`<div class="stat"><b>${a.length}</b>sessions</div><div class="stat"><b>${sets}</b>sets tracked</div><div class="stat"><b>${new Set(a.map(x=>x.day)).size}</b>days used</div>`}
-function renderProgress(){let day=+dayPick.value,a=load().filter(x=>x.day===day).sort((x,y)=>x.date.localeCompare(y.date));progress.innerHTML=a.length?a.map(x=>`<p><b>${x.date}</b><br>${Object.entries(x.exercises).map(([n,e])=>e.kind==="reps"?`${n}: ${e.sets.map(s=>s.reps+(s.done?"✓":"")).join(" / ")}`:`${n}: ${fmt(e.completed)}${e.done?" ✓":""}`).join(" · ")}</p>`).join(""):"<p class='muted'>Complete workouts to build progress.</p>"}
+function renderHistory(){let a=load().sort((x,y)=>y.date.localeCompare(x.date));document.getElementById('history').innerHTML=a.length?a.map(x=>`<div class="history"><b>${x.date} — Day ${x.day}</b><br>${Object.entries(x.exercises).map(([n,e])=>e.kind==="reps"?`${n}: ${e.sets.map(s=>s.reps+(s.done?" ✓":"")).join(" / ")}`:`${n}: ${fmt(e.completed)}${e.done?" ✓":""}`).join("<br>")}</div>`).join(""):"<span class='muted'>No saved workouts.</span>"}
+function renderStats(){let a=load(),sets=a.reduce((z,x)=>z+Object.values(x.exercises).reduce((q,e)=>q+(e.kind==="reps"?e.sets.length:0),0),0);document.getElementById('stats').innerHTML=`<div class="stat"><b>${a.length}</b>sessions</div><div class="stat"><b>${sets}</b>sets tracked</div><div class="stat"><b>${new Set(a.map(x=>x.day)).size}</b>days used</div>`}
+function renderProgress(){let day=+document.getElementById('dayPick').value,a=load().filter(x=>x.day===day).sort((x,y)=>x.date.localeCompare(y.date));document.getElementById('progress').innerHTML=a.length?a.map(x=>`<p><b>${x.date}</b><br>${Object.entries(x.exercises).map(([n,e])=>e.kind==="reps"?`${n}: ${e.sets.map(s=>s.reps+(s.done?"✓":"")).join(" / ")}`:`${n}: ${fmt(e.completed)}${e.done?" ✓":""}`).join(" · ")}</p>`).join(""):"<p class='muted'>Complete workouts to build progress.</p>"}
 function init(){
- date.textContent=new Date().toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"long",day:"numeric"});
- dayPick.innerHTML=Object.entries(PROGRAM).map(([d,p])=>`<option value="${d}">Day ${d}: ${p.name}</option>`).join("");
- let dow=new Date().getDay();dayPick.value=dow===0?7:dow;
- dayPick.onchange=()=>{render();renderSettings();renderProgress()};saveSettings.onclick=saveSettings;save.onclick=saveWorkout;
- export.onclick=()=>{let b=new Blob([JSON.stringify({workouts:load(),defaults:defaults()},null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="greek-god-v7-backup.json";a.click()};
- import.onclick=()=>file.click();file.onchange=async e=>{try{let x=JSON.parse(await e.target.files[0].text());store(x.workouts||x);alert("Imported");location.reload()}catch{alert("Invalid backup")}};
- clear.onclick=()=>{if(confirm("Delete all workout history and settings?")){localStorage.removeItem(DATAKEY);localStorage.removeItem(SETKEY);location.reload()}};
+ document.getElementById('date').textContent=new Date().toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+ document.getElementById('dayPick').innerHTML=Object.entries(PROGRAM).map(([d,p])=>`<option value="${d}">Day ${d}: ${p.name}</option>`).join("");
+ let dow=new Date().getDay();document.getElementById('dayPick').value=dow===0?7:dow;
+ document.getElementById('dayPick').onchange=()=>{render();renderSettings();renderProgress()};document.getElementById('saveSettings').onclick=saveDefaultSettings;document.getElementById('save').onclick=saveWorkout;
+ document.getElementById('export').onclick=()=>{let b=new Blob([JSON.stringify({workouts:load(),defaults:defaults()},null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="greek-god-v7-backup.json";a.click()};
+ document.getElementById('import').onclick=()=>document.getElementById('file').click();document.getElementById('file').onchange=async e=>{try{let x=JSON.parse(await e.target.files[0].text());store(x.workouts||x);alert("Imported");location.reload()}catch{alert("Invalid backup")}};
+ document.getElementById('clear').onclick=()=>{if(confirm("Delete all workout history and settings?")){localStorage.removeItem(DATAKEY);localStorage.removeItem(SETKEY);location.reload()}};
  render();renderSettings();renderHistory();renderStats();renderProgress();
 }
 init();
