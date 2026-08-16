@@ -1,140 +1,193 @@
-<!doctype html><html><head>
+<!doctype html>
+<html>
+<head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#111827"><link rel="manifest" href="manifest.json">
-<title>Workout Tracker</title>
+<title>Greek God Upright Circuit v7</title>
 <style>
-body{margin:0;background:#f3f4f6;color:#111827;font-family:system-ui,sans-serif}header{background:#111827;color:white;padding:18px}main{max-width:720px;margin:auto;padding:14px}
-.card{background:white;border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 2px 10px #0001}.exercise{border-top:1px solid #eee;padding:16px 0}.exercise:first-child{border:0}
-h1,h2,h3{margin:0 0 8px}.muted{color:#6b7280;font-size:14px}.sets{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-label{font-size:12px;color:#6b7280}input,select{width:100%;box-sizing:border-box;padding:10px;border:1px solid #d1d5db;border-radius:9px;font:inherit;margin-top:4px}
-button{padding:11px;border:0;border-radius:10px;background:#111827;color:white;font-weight:600}button.alt{background:#e5e7eb;color:#111827}.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.row button{flex:1}
-.timer{text-align:center;font-size:42px;font-variant-numeric:tabular-nums;padding:8px}.timerbox{background:#f8fafc;border-radius:12px;padding:10px;margin-top:10px}
-.ok{background:#ecfdf5;color:#166534;padding:12px;border-radius:10px;margin-top:10px}.history{border-top:1px solid #eee;padding:12px 0}
-canvas{width:100%;height:230px;border:1px solid #eee;border-radius:10px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stat{text-align:center;background:#f8fafc;padding:10px;border-radius:10px}.stat b{display:block;font-size:22px}
-</style></head><body>
-<header><h1>Today's Workout</h1><div id="date" class="muted" style="color:#cbd5e1"></div></header><main>
-<section class="card"><h2>Workout</h2><div id="workout"></div><button id="save">✓ DONE — SAVE WORKOUT</button><div id="msg"></div></section>
-<section class="card"><h2>Progress</h2><div id="stats" class="stats"></div><br><select id="pick"></select><canvas id="graph" width="700" height="260"></canvas></section>
-<section class="card"><h2>⚙️ Timer Settings</h2><div id="settings"></div><button id="saveSettings">Save Timer Settings</button><p class="muted">Settings are saved only in this browser and do not change workout history.</p></section><section class="card"><h2>History & Edit</h2><div id="history"></div></section>
-<section class="card"><h2>Data</h2><div class="row"><button id="export">Export</button><button id="import" class="alt">Import</button><button id="clear">Clear</button></div><input id="file" type="file" accept="application/json" hidden><p class="muted">Results stay in this browser.</p></section>
+body{margin:0;background:#f3f4f6;color:#111827;font-family:system-ui,sans-serif}
+header{background:#111827;color:#fff;padding:18px}main{max-width:820px;margin:auto;padding:14px}
+.card{background:#fff;border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 2px 10px #0001}
+.exercise{border-top:1px solid #eee;padding:15px 0}.exercise:first-child{border:0}
+h1,h2,h3{margin:0 0 8px}.muted{color:#6b7280;font-size:13px}
+input,select{width:100%;box-sizing:border-box;padding:9px;border:1px solid #d1d5db;border-radius:9px;font:inherit;margin-top:4px}
+button{padding:10px 12px;border:0;border-radius:10px;background:#111827;color:#fff;font-weight:600}
+button.alt{background:#e5e7eb;color:#111827}.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}.row button{flex:1}
+.timer{text-align:center;font-size:42px;font-variant-numeric:tabular-nums;padding:7px}
+.timerbox{background:#f8fafc;border-radius:12px;padding:10px;margin-top:9px}
+.setgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.ok{background:#ecfdf5;color:#166534;padding:11px;border-radius:10px;margin-top:10px}
+.history{border-top:1px solid #eee;padding:12px 0}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{text-align:center;background:#f8fafc;padding:10px;border-radius:10px}.stat b{display:block;font-size:20px}
+</style></head>
+<body>
+<header><h1>Greek God Upright Circuit</h1><div id="date"></div></header>
+<main>
+<section class="card"><h2 id="dayTitle"></h2><div id="dayMeta" class="muted"></div>
+<select id="dayPick" style="margin-top:10px"></select></section>
+
+<section class="card"><h2>Today's Circuit</h2><div id="workout"></div>
+<button id="save">✓ DONE — SAVE WORKOUT</button><div id="msg"></div></section>
+
+<section class="card"><h2>⚙️ Editable Default Settings</h2><div id="settings"></div>
+<button id="saveSettings">Save Default Settings</button>
+<p class="muted">These defaults control the next workout/timers. They are stored separately from workout history.</p></section>
+
+<section class="card"><h2>Progress</h2><div id="stats" class="stats"></div><div id="progress"></div></section>
+<section class="card"><h2>History & Edit</h2><div id="history"></div></section>
+<section class="card"><h2>Data</h2><div class="row"><button id="export">Export</button><button id="import" class="alt">Import</button><button id="clear" class="alt">Clear</button></div>
+<input id="file" type="file" accept="application/json" hidden><p class="muted">Results stay in this browser.</p></section>
 </main>
+
 <script>
-const PLAN={
-"Push-ups":{kind:"sets",sets:3,target:10,unit:"reps",rest:90},
-"Bodyweight Squats":{kind:"sets",sets:3,target:12,unit:"reps",rest:90},
-"Plank":{kind:"sets",sets:3,target:30,unit:"sec",rest:60},
-"Treadmill":{kind:"timer",target:1200},
-"Skipping":{kind:"timer",target:300}
-},KEY="workoutResultsV3",SETKEY="workoutTimerSettingsV1",TODAY=new Date().toISOString().slice(0,10),$=x=>document.getElementById(x);
-$("date").textContent=new Date().toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"long",day:"numeric"});
-let intervals={};
-
-function load(){try{return JSON.parse(localStorage.getItem(KEY)||"[]")}catch{return[]}}
-function store(x){localStorage.setItem(KEY,JSON.stringify(x))}
-function fmt(s){s=Math.max(0,Math.round(s));return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")}
-function notify(t,b){if("Notification"in window&&Notification.permission==="granted")new Notification(t,{body:b})}
-function askNotify(){if("Notification"in window&&Notification.permission==="default")Notification.requestPermission()}
-
-function getSettings(){
-  const d={};
-  try{Object.assign(d,JSON.parse(localStorage.getItem(SETKEY)||"{}"))}catch{}
-  for(const [n,p] of Object.entries(PLAN)){
-    if(!(n in d)) d[n]=p.kind==="sets"?p.rest:p.target;
-  }
-  return d;
-}
-function saveSettings(){
-  const d={};
-  for(const [n,p] of Object.entries(PLAN)){
-    const el=document.getElementById("setting-"+btoa(n));
-    let v=Math.max(1,Number(el.value)||1);
-    d[n]=v;
-  }
-  localStorage.setItem(SETKEY,JSON.stringify(d));
-  renderSettings(); render();
-  $("msg").innerHTML='<div class="ok">✓ Timer settings saved locally.</div>';
-}
-function renderSettings(){
-  const d=getSettings();
-  let out="";
-  for(const [n,p] of Object.entries(PLAN)){
-    const unit=p.kind==="sets"?"sec":"min";
-    const value=p.kind==="sets"?d[n]:Math.round(d[n]/60);
-    out+=`<div class="row" style="align-items:center"><label style="flex:2">${n} ${p.kind==="sets"?"rest":"duration"}<input id="setting-${btoa(n)}" type="number" min="1" value="${value}"></label><span class="muted">${unit}</span></div>`;
-  }
-  $("settings").innerHTML=out;
-}
-function getAdaptiveValues(name,p,saved){
-  if(saved?.exercises?.[name]?.values) return saved.exercises[name].values;
-  const history=load().filter(x=>x.date!==TODAY).sort((a,b)=>b.date.localeCompare(a.date));
-  const prev=history.find(x=>x.exercises?.[name]?.values);
-  if(!prev) return Array(p.sets).fill(p.target);
-  const prevData=prev.exercises[name];
-  const prevVals=prevData.values||[];
-  const prevDone=prevData.done||[];
-  return Array.from({length:p.sets},(_,i)=>{
-    const actual=Number(prevVals[i]);
-    if(!Number.isFinite(actual)||actual<=0) return p.target;
-    // If the previous session was not completed at the target, start today one rep lower.
-    // This also works when the previous session was two or more days ago.
-    const targetReached=prevDone[i]===true && actual>=p.target;
-    return targetReached ? actual : Math.max(1,actual-1);
-  });
-}
-
-function render(){
-let saved=load().find(x=>x.date===TODAY),out="",settings=getSettings();
-for(const [name,p] of Object.entries(PLAN)){
-if(p.kind==="sets"){
-let vals=saved?.exercises?.[name]?.values||getAdaptiveValues(name,p,saved), done=saved?.exercises?.[name]?.done||[];
-out+=`<div class="exercise"><h3>${name}</h3><div class="muted">Target: ${p.sets} × ${p.target} ${p.unit} · Rest ${fmt(settings[name])}</div><div class="sets">`;
-for(let i=0;i<p.sets;i++)out+=`<label>Set ${i+1}<input data-v="${name}" data-i="${i}" type="number" min="0" value="${vals[i]??p.target}"><span><input type="checkbox" data-d="${name}" data-i="${i}" ${done[i]?"checked":""}> done</span></label>`;
-out+=`</div><div class="timerbox"><div class="timer" id="r${btoa(name)}">${fmt(settings[name])}</div><div class="row"><button class="alt" onclick="restStart('${name}',${settings[name]})">▶ Rest</button><button class="alt" onclick="restReset('${name}',${settings[name]})">↻ Reset</button></div></div></div>`;
-}else{
-let val=saved?.exercises?.[name]?.duration??settings[name];
-out+=`<div class="exercise"><h3>${name}</h3><div class="muted">Target: ${fmt(settings[name])}</div><div class="timerbox"><div class="timer" id="m${btoa(name)}">${fmt(val)}</div><div class="row"><button onclick="mainStart('${name}')">▶ Start</button><button class="alt" onclick="mainPause('${name}')">⏸ Pause</button><button class="alt" onclick="mainReset('${name}',${settings[name]})">↻ Reset</button></div></div></div>`;
-}}
-$("workout").innerHTML=out;if(saved)$("msg").innerHTML='<div class="ok">✓ Saved today. You can update and save again.</div>';
-}
-
-window.restStart=(n,s)=>{askNotify();clearInterval(intervals["r"+n]);let end=Date.now()+s*1000;intervals["r"+n]=setInterval(()=>{let x=Math.max(0,Math.ceil((end-Date.now())/1000));$("r"+btoa(n)).textContent=fmt(x);if(!x){clearInterval(intervals["r"+n]);notify("Rest finished","Next set: "+n)}},250)}
-window.restReset=(n,s)=>{clearInterval(intervals["r"+n]);$("r"+btoa(n)).textContent=fmt(s)}
-window.mainStart=n=>{askNotify();clearInterval(intervals["m"+n]);let el=$("m"+btoa(n)),q=el.textContent.split(":"),cur=+q[0]*60+ +q[1],end=Date.now()+cur*1000;intervals["m"+n]=setInterval(()=>{let x=Math.max(0,Math.ceil((end-Date.now())/1000));el.textContent=fmt(x);if(!x){clearInterval(intervals["m"+n]);notify(n+" finished","Target timer completed")}},250)}
-window.mainPause=n=>clearInterval(intervals["m"+n])
-window.mainReset=(n,s)=>{clearInterval(intervals["m"+n]);$("m"+btoa(n)).textContent=fmt(s)}
-
-$("saveSettings").onclick=saveSettings;
-$("save").onclick=()=>{
-askNotify();let data={date:TODAY,completedAt:new Date().toISOString(),exercises:{}};
-for(const [n,p] of Object.entries(PLAN)){
-if(p.kind==="sets")data.exercises[n]={values:Array.from({length:p.sets},(_,i)=>+document.querySelector(`[data-v="${n}"][data-i="${i}"]`).value||0),done:Array.from({length:p.sets},(_,i)=>document.querySelector(`[data-d="${n}"][data-i="${i}"]`).checked)};
-else{let q=$("m"+btoa(n)).textContent.split(":");data.exercises[n]={duration:+q[0]*60+ +q[1]}}
-}
-let a=load().filter(x=>x.date!==TODAY);a.push(data);store(a);$("msg").innerHTML='<div class="ok">✓ Workout saved locally.</div>';renderHistory();renderStats();renderPick();draw();
+const PROGRAM={
+1:{name:"UPPER V-TAPER & SHOULDERS",rounds:4,rest:90,items:[
+["Pull-Ups (Overhand)","reps",4,8,"Work 30–35s · Active recovery 45s skipping · Transition 15s"],
+["Pike Push-Ups","reps",8,10,"Work 30–35s · Active recovery 45s skipping · Transition 15s"],
+["Decline Feet-Elevated Push-Ups","reps",10,12,"Work 35–40s · Active recovery 45s skipping · Transition 15s"],
+["Hanging Leg / Knee Raise Hold","time",30,30,"Hold 30s · Active recovery 45s skipping · Transition 15s"]]},
+2:{name:"SCULPTED LEGS & CALF RATIO",rounds:4,rest:90,items:[
+["Tempo Bodyweight Squats","reps",12,15,"Work 50–60s · Active recovery 45s skipping · Transition 15s"],
+["Bulgarian Split Squats","reps",8,8,"8/leg · Work 50s · Active recovery 45s skipping · Transition 15s"],
+["Standing Single-Leg Calf Raise + Peak Hold","reps",12,12,"12/leg · Work 45s · High-knee skipping 30s · Transition 15s"],
+["Wall Sit Hold","time",45,45,"Hold 45s · Active recovery 45s skipping · Transition 15s"]]},
+3:{name:"JOINT RECOVERY & PULLING PEAK",rounds:3,rest:60,items:[
+["Chin-Ups (Underhand)","reps",4,6,"Work 30s · Static rest 60s"],
+["Standing Bodyweight Good Mornings","reps",12,12,"Work 35–40s · Static rest 30s"],
+["Standing Single-Leg Hip Hinge Hold","time",40,40,"20s/leg · Static rest 30s"],
+["Upright Mobility Focus","time",1200,1200,"20 minutes: standing hip flexor lunges, wrist extensions, broomstick shoulder dislocations"]]},
+4:{name:"ARMS, UPPER CHEST & OBLIQUE SCULPTING",rounds:4,rest:90,items:[
+["Chin-Ups (Underhand)","reps",5,8,"Work 30s · Active recovery 45s skipping · Transition 15s"],
+["Diamond Push-Ups","reps",8,10,"Work 30–35s · Active recovery 45s skipping · Transition 15s"],
+["Seated T-Bar Row","reps",10,12,"Work 35–40s · Active recovery 45s skipping · Transition 15s"],
+["Standing High-Knee Core Vacuum Hold","time",45,45,"45s alternating knees · Active recovery 45s skipping · Transition 15s"]]},
+5:{name:"UNILATERAL AESTHETICS & CONDITIONING",rounds:4,rest:90,items:[
+["Assisted Single-Leg Squats","reps",5,5,"5/leg · Work 40s · Active recovery 45s skipping · Transition 15s"],
+["Standing Single-Leg RDL","reps",8,10,"8–10/leg · Work 50–60s · Active recovery 45s skipping · Transition 15s"],
+["Standing Single-Leg Calf Iso-Hold","time",60,60,"60s total · 30s/leg · Transition 15s"],
+["Jump Rope Speed Burst","time",60,60,"20s maximum speed / 10s rest × 2 cycles"]]},
+6:{name:"GREEK HERO FULL-BODY CIRCUIT",rounds:4,rest:120,items:[
+["Pull-Ups or Chin-Ups","time",45,45,"45s work · Transition 15s"],
+["Bodyweight Squats","time",45,45,"45s work · Transition 15s"],
+["Pike or Diamond Push-Ups","time",45,45,"45s work · Transition 15s"],
+["Continuous Skipping","time",60,60,"60s work · Transition 15s"],
+["Hanging Knee Raise Hold","time",45,45,"45s work · 2 min rest after full 5-exercise loop"]]},
+7:{name:"COMPLETE RESET",rounds:0,rest:0,items:[
+["Relaxed Walk","time",1800,1800,"30-minute relaxed walk"],
+["Standing Stretches","time",600,600,"10 minutes"],
+["Hydration & Recovery","time",0,0,"Hydration and sleep focus"]]}
 };
 
+const SETKEY="greekGodTimerDefaultsV7", DATAKEY="greekGodWorkoutV7";
+const dayNames=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+let intervals={};
+
+function todayDay(){let d=new Date().getDay();return d===0?7:d}
+function fmt(s){s=Math.max(0,Math.round(s));return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")}
+function load(){try{return JSON.parse(localStorage.getItem(DATAKEY)||"[]")}catch{return[]}}
+function store(x){localStorage.setItem(DATAKEY,JSON.stringify(x))}
+function defaults(){
+ let d={};try{d=JSON.parse(localStorage.getItem(SETKEY)||"{}")}catch{}
+ for(let day=1;day<=7;day++) for(const it of PROGRAM[day].items){
+   let k=day+"|"+it[0]; if(!(k in d)) d[k]=it[2];
+ }
+ for(let day=1;day<=7;day++) d[day+"|roundRest"]??=PROGRAM[day].rest;
+ d.transition=15; d.activeRecovery=45;
+ return d;
+}
+function saveDefaults(d){localStorage.setItem(SETKEY,JSON.stringify(d))}
+function key(day,name){return day+"|"+name}
+function adaptiveDefault(day,name,fallback){
+ let a=load().filter(x=>x.day===day).sort((a,b)=>b.date.localeCompare(a.date));
+ if(!a.length)return fallback;
+ let last=a[0].exercises?.[name];
+ if(!last)return fallback;
+ if(last.kind==="reps") return Math.max(1,last.completed);
+ return last.completed??fallback;
+}
+function renderSettings(){
+ let d=defaults(),day=+document.getElementById("dayPick").value,out="";
+ PROGRAM[day].items.forEach((it,i)=>{
+   let v=d[key(day,it[0])], unit=it[1]==="reps"?"reps":"sec";
+   out+=`<label>${it[0]} default (${unit})<input id="s${i}" type="number" min="1" value="${v}"></label>`;
+ });
+ out+=`<label>Round rest (sec)<input id="roundRest" type="number" min="1" value="${d[key(day,"roundRest")]||PROGRAM[day].rest}"></label>`;
+ out+=`<label>Transition (sec)<input id="transition" type="number" min="1" value="${d.transition}"></label>`;
+ out+=`<label>Active recovery / skipping (sec)<input id="activeRecovery" type="number" min="1" value="${d.activeRecovery}"></label>`;
+ document.getElementById("settings").innerHTML=out;
+}
+function saveSettings(){
+ let day=+dayPick.value,d=defaults();
+ PROGRAM[day].items.forEach((it,i)=>d[key(day,it[0])]=Math.max(1,+document.getElementById("s"+i).value||1));
+ d[key(day,"roundRest")]=Math.max(1,+roundRest.value||1);
+ d.transition=Math.max(1,+transition.value||1); d.activeRecovery=Math.max(1,+activeRecovery.value||1);
+ saveDefaults(d); render(); renderSettings();
+ msg.innerHTML='<div class="ok">✓ Default settings saved locally.</div>';
+}
+function render(){
+ let day=+dayPick.value,p=PROGRAM[day],d=defaults(),today=new Date().toISOString().slice(0,10);
+ dayTitle.textContent=`Day ${day}: ${p.name}`;dayMeta.textContent=`${dayNames[day%7]} · ${p.rounds? p.rounds+" rounds":"Recovery day"}`;
+ let saved=load().find(x=>x.date===today&&x.day===day),out="";
+ if(day===7){out+=`<div class="exercise"><h3>Complete Reset</h3><p class="muted">Zero structured exercise. Relaxed walk, standing stretches, hydration and sleep.</p></div>`}
+ p.items.forEach((it,i)=>{
+   let name=it[0],kind=it[1],def=d[key(day,name)]||it[2],prev=adaptiveDefault(day,name,def);
+   let current=saved?.exercises?.[name]?.completed ?? prev;
+   if(kind==="reps"){
+     let sets=p.rounds||1,vals=saved?.exercises?.[name]?.sets||Array(sets).fill(current);
+     out+=`<div class="exercise"><h3>${name}</h3><div class="muted">Program: ${it[2]}–${it[3]} reps · Adaptive default: ${current} reps · ${it[4]}</div><div class="setgrid">`;
+     for(let r=0;r<sets;r++)out+=`<label>Round ${r+1} completed reps<input data-name="${encodeURIComponent(name)}" data-round="${r}" type="number" min="0" value="${vals[r]??current}"></label>`;
+     out+=`</div></div>`;
+   }else{
+     out+=`<div class="exercise"><h3>${name}</h3><div class="muted">${it[4]} · Default: ${fmt(def)}</div>
+     <div class="timerbox"><div class="timer" id="t${i}">${fmt(current)}</div>
+     <div class="row"><button onclick="startTimer(${i},${current})">▶ Start</button><button class="alt" onclick="pauseTimer(${i})">⏸ Pause</button><button class="alt" onclick="resetTimer(${i},${def})">↻ Reset</button></div>
+     <label>Completed seconds<input id="done${i}" type="number" min="0" value="${current}"></label></div></div>`;
+   }
+ });
+ out+=`<div class="muted"><b>Round rest:</b> ${fmt(d[key(day,"roundRest")]||p.rest)} · <b>Transition:</b> ${d.transition}s · <b>Active recovery:</b> ${d.activeRecovery}s</div>`;
+ workout.innerHTML=out;
+}
+function startTimer(i,s){clearInterval(intervals[i]);let end=Date.now()+s*1000;intervals[i]=setInterval(()=>{let x=Math.max(0,Math.ceil((end-Date.now())/1000));let el=document.getElementById("t"+i);if(el)el.textContent=fmt(x);if(!x)clearInterval(intervals[i])},250)}
+function pauseTimer(i){clearInterval(intervals[i])}
+function resetTimer(i,s){clearInterval(intervals[i]);let el=document.getElementById("t"+i);if(el)el.textContent=fmt(s);let d=document.getElementById("done"+i);if(d)d.value=s}
+function saveWorkout(){
+ let day=+dayPick.value,p=PROGRAM[day],date=new Date().toISOString().slice(0,10),data={date,day,completedAt:new Date().toISOString(),exercises:{}};
+ p.items.forEach((it,i)=>{
+   let name=it[0];
+   if(it[1]==="reps"){
+     let sets=[...document.querySelectorAll(`[data-name="${encodeURIComponent(name)}"]`)].map(x=>+x.value||0);
+     data.exercises[name]={kind:"reps",sets,completed:Math.min(...sets.filter(x=>x>=0)),target:it[3]};
+   }else{
+     let v=+document.getElementById("done"+i)?.value||0;data.exercises[name]={kind:"time",completed:v,target:it[3]};
+   }
+ });
+ let a=load().filter(x=>!(x.date===date&&x.day===day));a.push(data);store(a);
+ msg.innerHTML='<div class="ok">✓ Workout saved. Future defaults will adapt from your completed performance.</div>';
+ renderHistory();renderStats();renderProgress();
+}
 function renderHistory(){
-let a=load().sort((x,y)=>y.date.localeCompare(x.date));$("history").innerHTML=a.length?a.map(x=>`<div class="history"><b>${x.date}</b><br><span class="muted">${Object.entries(x.exercises).map(([n,d])=>d.values?`${n}: ${d.values.join(" / ")}`:`${n}: ${fmt(d.duration)}`).join("<br>")}</span><div class="row"><button class="alt" onclick="edit('${x.date}')">Edit</button><button class="alt" onclick="del('${x.date}')">Delete</button></div></div>`).join(""):"<span class='muted'>No saved workouts.</span>";
+ let a=load().sort((x,y)=>y.date.localeCompare(x.date));
+ history.innerHTML=a.length?a.map(x=>`<div class="history"><b>${x.date} — Day ${x.day}</b><br>${Object.entries(x.exercises).map(([n,e])=>`${n}: ${e.kind==="reps"?e.sets.join(" / ")+" reps":fmt(e.completed)}`).join("<br>")}</div>`).join(""):"<span class='muted'>No saved workouts.</span>";
 }
-window.del=d=>{if(confirm("Delete this workout?")){store(load().filter(x=>x.date!==d));render();renderHistory();renderStats();renderPick();draw()}}
-window.edit=d=>{let a=load(),x=a.find(v=>v.date===d);if(!x)return;for(const [n,p] of Object.entries(PLAN)){if(p.kind==="sets"){let vals=prompt(n+" sets, comma separated",x.exercises[n].values.join(","));if(vals!==null)x.exercises[n].values=vals.split(",").map(Number)}else{let v=prompt(n+" duration in seconds",x.exercises[n].duration);if(v!==null)x.exercises[n].duration=+v}}store(a);render();renderHistory();renderStats();renderPick();draw()}
-
-function renderStats(){let a=load(),sets=a.reduce((z,x)=>z+Object.values(x.exercises).reduce((q,e)=>q+(e.values?.length||0),0),0);$("stats").innerHTML=`<div class="stat"><b>${a.length}</b>workouts</div><div class="stat"><b>${sets}</b>sets</div><div class="stat"><b>${a.length?Math.round(a.length/7*100)/100:0}</b>/7 days</div>`}
-function renderPick(){$("pick").innerHTML=Object.keys(PLAN).map(n=>`<option>${n}</option>`).join("")}
-function draw(){
-let c=$("graph"),ctx=c.getContext("2d"),dpr=devicePixelRatio||1,w=c.clientWidth,h=230;c.width=w*dpr;c.height=h*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
-let n=$("pick").value,a=load().sort((x,y)=>x.date.localeCompare(y.date)).map(x=>({d:x.date,v:x.exercises[n]?.values?.[0]??x.exercises[n]?.duration})).filter(x=>Number.isFinite(x.v));ctx.font="12px system-ui";ctx.fillStyle="#6b7280";if(!a.length){ctx.fillText("Complete workouts to see progress.",20,35);return}
-let max=Math.max(...a.map(x=>x.v),1),min=Math.min(0,...a.map(x=>x.v)),pad=35,X=i=>pad+(w-pad-20)*(a.length<2?.5:i/(a.length-1)),Y=v=>h-30-(v-min)/(max-min||1)*(h-45);
-ctx.strokeStyle="#d1d5db";ctx.beginPath();ctx.moveTo(pad,10);ctx.lineTo(pad,h-30);ctx.lineTo(w-10,h-30);ctx.stroke();ctx.strokeStyle="#111827";ctx.lineWidth=2;ctx.beginPath();a.forEach((p,i)=>i?ctx.lineTo(X(i),Y(p.v)):ctx.moveTo(X(i),Y(p.v)));ctx.stroke();ctx.fillStyle="#111827";a.forEach((p,i)=>{ctx.beginPath();ctx.arc(X(i),Y(p.v),4,0,7);ctx.fill()})
+function renderStats(){
+ let a=load(),sessions=a.length,reps=a.reduce((z,x)=>z+Object.values(x.exercises).reduce((q,e)=>q+(e.kind==="reps"?e.sets.reduce((m,v)=>m+v,0):0),0);
+ stats.innerHTML=`<div class="stat"><b>${sessions}</b>sessions</div><div class="stat"><b>${reps}</b>reps</div><div class="stat"><b>${new Set(a.map(x=>x.day)).size}</b>days trained</div>`;
 }
-$("pick").onchange=draw;
-
-$("export").onclick=()=>{let b=new Blob([JSON.stringify(load(),null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="workout-backup.json";a.click()}
-$("import").onclick=()=>$("file").click();
-$("file").onchange=async e=>{try{let x=JSON.parse(await e.target.files[0].text());if(!Array.isArray(x))throw 0;store(x);render();renderHistory();renderStats();renderPick();draw();alert("Imported")}catch{alert("Invalid backup")}}
-$("clear").onclick=()=>{if(confirm("Delete all workout data?")){localStorage.removeItem(KEY);renderSettings();render();renderHistory();renderStats();renderPick();draw()}}
-
-function seed(){if(localStorage.getItem(KEY))return;let a=[];for(let i=3;i>=1;i--){let d=new Date();d.setDate(d.getDate()-i);let n=3-i,date=d.toISOString().slice(0,10);a.push({date,exercises:{"Push-ups":{values:[8+n,8+n,7+n],done:[1,1,1]},"Bodyweight Squats":{values:[10+n,11+n,10+n],done:[1,1,1]},"Plank":{values:[25+n*2,25+n*2,20+n*2],done:[1,1,1]},"Treadmill":{duration:900+n*60},"Skipping":{duration:240+n*20}}})}store(a)}
-seed();renderSettings();render();renderHistory();renderStats();renderPick();draw();
-if("serviceWorker"in navigator)navigator.serviceWorker.register("./sw.js").catch(()=>{});
+function renderProgress(){
+ let day=+dayPick.value,a=load().filter(x=>x.day===day).sort((x,y)=>x.date.localeCompare(y.date));
+ progress.innerHTML=a.length?`<p class="muted">${a.map(x=>`<b>${x.date}</b>: `+Object.entries(x.exercises).map(([n,e])=>e.kind==="reps"?`${n} ${Math.max(...e.sets)} reps`:`${n} ${fmt(e.completed)}`).join(" · ")).join("<br>")}</p>`:"<p class='muted'>Complete workouts to build progress history.</p>";
+}
+function init(){
+ let t=new Date();date.textContent=t.toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+ dayPick.innerHTML=Object.entries(PROGRAM).map(([d,p])=>`<option value="${d}">Day ${d}: ${p.name}</option>`).join("");
+ dayPick.value=todayDay();
+ dayPick.onchange=()=>{render();renderSettings();renderProgress()};
+ saveSettings.onclick=saveSettings;save.onclick=saveWorkout;
+ export.onclick=()=>{let b=new Blob([JSON.stringify(load(),null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="greek-god-v7-backup.json";a.click()};
+ import.onclick=()=>file.click();
+ file.onchange=async e=>{try{let x=JSON.parse(await e.target.files[0].text());if(!Array.isArray(x))throw 0;store(x);render();renderHistory();renderStats();renderProgress();alert("Imported")}catch{alert("Invalid backup")}};
+ clear.onclick=()=>{if(confirm("Delete all workout history and settings?")){localStorage.removeItem(DATAKEY);localStorage.removeItem(SETKEY);location.reload()}};
+ render();renderSettings();renderHistory();renderStats();renderProgress();
+}
+init();
 </script></body></html>
