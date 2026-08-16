@@ -5,78 +5,198 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
 <link rel="manifest" href="manifest.json">
-<title>Today's Workout</title>
+<title>Workout Progress</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#f3f4f6;color:#111827;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
-header{background:#111827;color:#fff;padding:20px 16px}main{max-width:680px;margin:auto;padding:16px 16px 40px}
+header{background:#111827;color:#fff;padding:20px 16px}main{max-width:760px;margin:auto;padding:14px 16px 50px}
 .card{background:#fff;border-radius:16px;padding:17px;margin:12px 0;box-shadow:0 2px 10px #0001}
 h1,h2,h3{margin:0 0 8px}.muted{color:#6b7280;font-size:14px}.exercise{border-top:1px solid #eee;padding:15px 0}
 .exercise:first-child{border-top:0}.target{font-size:14px;color:#6b7280;margin-bottom:10px}
 .sets{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}label{font-size:12px;color:#6b7280}
-input{width:100%;padding:11px;border:1px solid #d1d5db;border-radius:9px;font:inherit;margin-top:4px}
-button{width:100%;padding:13px;border:0;border-radius:10px;background:#111827;color:#fff;font:inherit;font-weight:600}
-.success{background:#ecfdf5;color:#166534;border-radius:12px;padding:13px;margin-top:12px}
-.history{font-size:14px}.history div{padding:8px 0;border-bottom:1px solid #eee}
+input{width:100%;padding:10px;border:1px solid #d1d5db;border-radius:9px;font:inherit;margin-top:4px}
+button{padding:11px 13px;border:0;border-radius:10px;background:#111827;color:#fff;font:inherit;font-weight:600}
+button.secondary{background:#e5e7eb;color:#111827}.danger{background:#b91c1c}
+.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1;min-width:120px}
+.success{background:#ecfdf5;color:#166534;border-radius:12px;padding:12px;margin-top:12px}
+.history-item{padding:12px 0;border-bottom:1px solid #eee}.history-item:last-child{border:0}
+canvas{width:100%;height:240px;border:1px solid #eee;border-radius:10px;background:#fff}
+select{width:100%;padding:10px;border:1px solid #d1d5db;border-radius:9px;font:inherit}
+.small{font-size:12px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stat{background:#f8fafc;border-radius:10px;padding:12px;text-align:center}.stat b{display:block;font-size:22px}
 </style>
 </head>
 <body>
-<header><h1>Today's Workout</h1><div id="date" class="muted" style="color:#cbd5e1"></div></header>
+<header><h1>Workout Progress</h1><div id="date" class="muted" style="color:#cbd5e1"></div></header>
 <main>
 <section class="card">
-<h2>Workout Plan</h2>
-<div id="workout"></div>
-<button id="done">DONE — Save Workout</button>
+<h2>Today's Workout</h2>
+<div id="today"></div>
+<div class="row"><button id="saveToday">DONE — Save Workout</button></div>
 <div id="message"></div>
 </section>
+
 <section class="card">
-<h3>Saved results</h3>
-<div id="history" class="history"></div>
+<h2>Progress</h2>
+<div id="stats" class="stats"></div>
+<p class="muted">Exercise trend</p>
+<select id="exerciseSelect"></select>
+<canvas id="chart" width="700" height="280"></canvas>
+</section>
+
+<section class="card">
+<h2>Workout History & Edit</h2>
+<div id="history"></div>
+</section>
+
+<section class="card">
+<h2>Data</h2>
+<div class="row">
+<button id="export">Export JSON</button>
+<button id="importBtn" class="secondary">Import JSON</button>
+<button id="clear" class="danger">Clear all data</button>
+</div>
+<input id="file" type="file" accept="application/json" hidden>
+<p class="muted small">Data stays in this browser's local storage. Export a backup before clearing site data or changing browsers.</p>
 </section>
 </main>
+
 <script>
 const PLAN={
  "Push-ups":{sets:3,target:10,unit:"reps"},
  "Bodyweight Squats":{sets:3,target:12,unit:"reps"},
  "Plank":{sets:3,target:30,unit:"sec"}
 };
-const key="workoutResultsV1";
-const date=new Date().toISOString().slice(0,10);
-document.getElementById("date").textContent=new Date().toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"long",day:"numeric"});
-function getResults(){try{return JSON.parse(localStorage.getItem(key)||"[]")}catch(e){return[]}}
-function render(){
- const saved=getResults().find(x=>x.date===date);
+const KEY="workoutResultsV2";
+const today=new Date().toISOString().slice(0,10);
+
+function seedDummyData(){
+  if(localStorage.getItem(KEY)) return;
+  const d=[];
+  for(let i=3;i>=1;i--){
+    const dt=new Date(); dt.setHours(12); dt.setDate(dt.getDate()-i);
+    const date=dt.toISOString().slice(0,10);
+    const n=3-i;
+    d.push({
+      date, completedAt:date+"T19:00:00.000Z",
+      exercises:{
+        "Push-ups":{values:[8+n,8+n,7+n]},
+        "Bodyweight Squats":{values:[10+n,11+n,10+n]},
+        "Plank":{values:[25+n*2,25+n*2,20+n*2]}
+      }
+    });
+  }
+  localStorage.setItem(KEY,JSON.stringify(d));
+}
+seedDummyData();
+const $=id=>document.getElementById(id);
+$("date").textContent=new Date().toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+
+function load(){try{return JSON.parse(localStorage.getItem(KEY)||"[]")}catch(e){return[]}}
+function save(a){localStorage.setItem(KEY,JSON.stringify(a))}
+function esc(s){return s.replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+
+function renderToday(){
+ const saved=load().find(x=>x.date===today);
  let html="";
  Object.entries(PLAN).forEach(([name,p])=>{
-   const vals=saved?.exercises?.[name]?.values||Array(p.sets).fill(p.target);
-   html+=`<div class="exercise"><h3>${name}</h3><div class="target">Target: ${p.sets} × ${p.target} ${p.unit}</div><div class="sets">`;
-   for(let i=0;i<p.sets;i++) html+=`<label>Set ${i+1}<input type="number" min="0" step="1" inputmode="numeric" data-ex="${name}" data-set="${i}" value="${vals[i]??p.target}"></label>`;
-   html+="</div></div>";
+  const vals=saved?.exercises?.[name]?.values||Array(p.sets).fill(p.target);
+  html+=`<div class="exercise"><h3>${esc(name)}</h3><div class="target">Target: ${p.sets} × ${p.target} ${p.unit}</div><div class="sets">`;
+  for(let i=0;i<p.sets;i++) html+=`<label>Set ${i+1}<input type="number" min="0" step="1" inputmode="numeric" data-today="${esc(name)}" data-set="${i}" value="${vals[i]??p.target}"></label>`;
+  html+="</div></div>";
  });
- document.getElementById("workout").innerHTML=html;
- renderHistory();
- if(saved)document.getElementById("message").innerHTML='<div class="success">✓ Today’s workout is already saved. You can update it and press DONE again.</div>';
+ $("today").innerHTML=html;
+ if(saved)$("message").innerHTML='<div class="success">✓ Today is saved. You can edit it and save again.</div>';
 }
-function renderHistory(){
- const h=getResults().sort((a,b)=>b.date.localeCompare(a.date));
- document.getElementById("history").innerHTML=h.length?h.slice(0,10).map(x=>{
-   const parts=Object.entries(x.exercises).map(([n,d])=>`${n}: ${d.values.join(" / ")}`).join("<br>");
-   return `<div><b>${x.date}</b><br>${parts}</div>`;
- }).join(""):"<span class='muted'>No saved workouts yet.</span>";
-}
-document.getElementById("done").onclick=()=>{
- const data={date,completedAt:new Date().toISOString(),exercises:{}};
+function collectToday(){
+ const data={date:today,completedAt:new Date().toISOString(),exercises:{}};
  Object.entries(PLAN).forEach(([name,p])=>{
-   data.exercises[name]={values:Array.from({length:p.sets},(_,i)=>{
-     const el=document.querySelector(`[data-ex="${CSS.escape(name)}"][data-set="${i}"]`);
-     return Number(el?.value||0);
-   })};
+  data.exercises[name]={values:Array.from({length:p.sets},(_,i)=>{
+   const el=document.querySelector(`[data-today="${CSS.escape(name)}"][data-set="${i}"]`);
+   return Number(el?.value||0);
+  })};
  });
- const all=getResults().filter(x=>x.date!==date);all.push(data);
- localStorage.setItem(key,JSON.stringify(all));
- document.getElementById("message").innerHTML='<div class="success">✓ Workout saved locally on this device.</div>';
- renderHistory();
+ return data;
+}
+$("saveToday").onclick=()=>{
+ const a=load().filter(x=>x.date!==today);a.push(collectToday());save(a);
+ $("message").innerHTML='<div class="success">✓ Workout saved locally.</div>';
+ renderHistory();renderStats();renderSelect();drawChart();
 };
-render();
+
+function renderHistory(){
+ const a=load().sort((x,y)=>y.date.localeCompare(x.date));
+ if(!a.length){$("history").innerHTML='<span class="muted">No saved workouts yet.</span>';return}
+ $("history").innerHTML=a.map(x=>{
+  const parts=Object.entries(x.exercises).map(([n,d])=>`${esc(n)}: ${d.values.join(" / ")}`).join("<br>");
+  return `<div class="history-item"><b>${esc(x.date)}</b><div class="small">${parts}</div>
+  <div class="row" style="margin-top:8px"><button class="secondary" onclick="editWorkout('${x.date}')">Edit</button>
+  <button class="danger" onclick="deleteWorkout('${x.date}')">Delete</button></div></div>`;
+ }).join("");
+}
+window.editWorkout=date=>{
+ const a=load(),x=a.find(v=>v.date===date);if(!x)return;
+ const body=Object.entries(PLAN).map(([n,p])=>{
+  const vals=x.exercises?.[n]?.values||Array(p.sets).fill(0);
+  return `<div class="exercise"><h3>${esc(n)}</h3><div class="sets">${vals.map((v,i)=>`<label>Set ${i+1}<input id="edit-${btoa(n)}-${i}" type="number" min="0" value="${v}"></label>`).join("")}</div></div>`;
+ }).join("");
+ const modal=document.createElement("div");modal.className="card";modal.style.position="fixed";modal.style.left="8px";modal.style.right="8px";modal.style.top="8px";modal.style.maxHeight="90vh";modal.style.overflow="auto";modal.style.zIndex="10";
+ modal.innerHTML=`<h2>Edit ${esc(date)}</h2>${body}<div class="row"><button id="saveEdit">Save changes</button><button id="cancelEdit" class="secondary">Cancel</button></div>`;
+ document.body.appendChild(modal);
+ $("cancelEdit").onclick=()=>modal.remove();
+ $("saveEdit").onclick=()=>{
+  Object.entries(PLAN).forEach(([n,p])=>x.exercises[n]={values:Array.from({length:p.sets},(_,i)=>Number(document.getElementById(`edit-${btoa(n)}-${i}`).value||0))});
+  x.completedAt=new Date().toISOString();save(a);modal.remove();renderToday();renderHistory();renderStats();renderSelect();drawChart();
+ };
+};
+window.deleteWorkout=date=>{
+ if(!confirm("Delete this saved workout?"))return;
+ save(load().filter(x=>x.date!==date));renderToday();renderHistory();renderStats();renderSelect();drawChart();
+};
+
+function renderStats(){
+ const a=load(), count=a.length;
+ const allSets=a.reduce((n,x)=>n+Object.values(x.exercises||{}).reduce((m,e)=>m+e.values.length,0),0);
+ $("stats").innerHTML=`<div class="stat"><b>${count}</b><span class="small">workouts</span></div><div class="stat"><b>${allSets}</b><span class="small">sets logged</span></div><div class="stat"><b>${count?Math.round(count/7*100)/100:0}</b><span class="small">per 7 days*</span></div>`;
+}
+function renderSelect(){
+ $("exerciseSelect").innerHTML=Object.keys(PLAN).map(n=>`<option>${esc(n)}</option>`).join("");
+}
+function drawChart(){
+ const c=$("chart"),ctx=c.getContext("2d"),dpr=devicePixelRatio||1;
+ const w=c.clientWidth,h=240;c.width=w*dpr;c.height=h*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
+ const name=$("exerciseSelect").value||Object.keys(PLAN)[0], a=load().sort((x,y)=>x.date.localeCompare(y.date));
+ const pts=a.map(x=>({date:x.date,v:x.exercises?.[name]?.values?.[0]})).filter(x=>Number.isFinite(x.v));
+ ctx.font="12px system-ui";ctx.fillStyle="#6b7280";
+ if(!pts.length){ctx.fillText("Complete a workout to see progress.",20,40);return}
+ const max=Math.max(...pts.map(p=>p.v),1),min=Math.min(0,...pts.map(p=>p.v)),pad=35;
+ ctx.beginPath();ctx.moveTo(pad,10);ctx.lineTo(pad,h-30);ctx.lineTo(w-10,h-30);ctx.strokeStyle="#d1d5db";ctx.stroke();
+ const x=i=>pad+(w-pad-20)*(pts.length===1?.5:i/(pts.length-1));
+ const y=v=>(h-30)-((v-min)/(max-min||1))*(h-45);
+ ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(x(i),y(p.v)):ctx.moveTo(x(i),y(p.v)));ctx.strokeStyle="#111827";ctx.lineWidth=2;ctx.stroke();
+ ctx.fillStyle="#111827";pts.forEach((p,i)=>{ctx.beginPath();ctx.arc(x(i),y(p.v),4,0,Math.PI*2);ctx.fill()});
+ ctx.fillStyle="#6b7280";ctx.fillText(String(min),5,h-30);ctx.fillText(String(max),5,18);
+ ctx.fillText(pts[0].date,pad,h-8);if(pts.length>1)ctx.fillText(pts.at(-1).date,w-90,h-8);
+}
+$("exerciseSelect").onchange=drawChart;
+
+$("export").onclick=()=>{
+ const blob=new Blob([JSON.stringify(load(),null,2)],{type:"application/json"});
+ const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="workout-backup.json";a.click();URL.revokeObjectURL(a.href);
+};
+$("importBtn").onclick=()=>$("file").click();
+$("file").onchange=async e=>{
+ const f=e.target.files[0];if(!f)return;
+ try{const data=JSON.parse(await f.text());if(!Array.isArray(data))throw Error();
+   if(!confirm("Replace current workout data with this backup?"))return;
+   save(data);renderToday();renderHistory();renderStats();renderSelect();drawChart();alert("Backup imported.");
+ }catch(err){alert("Invalid workout backup file.");}
+ e.target.value="";
+};
+$("clear").onclick=()=>{
+ if(confirm("Delete ALL saved workout data from this browser? This cannot be undone unless you have an export.")){
+  localStorage.removeItem(KEY);renderToday();renderHistory();renderStats();renderSelect();drawChart();
+ }
+};
+renderToday();renderHistory();renderStats();renderSelect();drawChart();
 if("serviceWorker"in navigator)navigator.serviceWorker.register("./sw.js").catch(()=>{});
 </script>
 </body>

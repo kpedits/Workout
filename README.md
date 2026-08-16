@@ -1,13 +1,15 @@
-# Workout — GitHub Pages test
+# Workout Progress v2
 
-Upload `index.html`, `manifest.json`, and `sw.js` to the repository root.
+Upload `index.html`, `manifest.json`, and `sw.js` to the root of the GitHub Pages repository.
 
-Enable GitHub Pages:
-Settings → Pages → Deploy from branch → `main` → `/ (root)`.
+Features:
+- Today's workout
+- Edit saved workouts
+- Delete saved workouts
+- Local browser storage
+- JSON export/import backup
+- Clear all data
+- Progress statistics
+- Exercise progress graph using first-set actual values
 
-Expected URL:
-`https://kpedits.github.io/Workout/`
-
-The page loads today's fixed workout, lets you enter each set, and saves results locally with localStorage.
-
-Google Calendar can contain the GitHub Pages URL as the workout link. This first test intentionally has no automatic progression.
+No server/database is used for workout results.
