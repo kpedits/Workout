@@ -64,11 +64,29 @@ function renderSettings(){
   }
   $("settings").innerHTML=out;
 }
+function getAdaptiveValues(name,p,saved){
+  if(saved?.exercises?.[name]?.values) return saved.exercises[name].values;
+  const history=load().filter(x=>x.date!==TODAY).sort((a,b)=>b.date.localeCompare(a.date));
+  const prev=history.find(x=>x.exercises?.[name]?.values);
+  if(!prev) return Array(p.sets).fill(p.target);
+  const prevData=prev.exercises[name];
+  const prevVals=prevData.values||[];
+  const prevDone=prevData.done||[];
+  return Array.from({length:p.sets},(_,i)=>{
+    const actual=Number(prevVals[i]);
+    if(!Number.isFinite(actual)||actual<=0) return p.target;
+    // If the previous session was not completed at the target, start today one rep lower.
+    // This also works when the previous session was two or more days ago.
+    const targetReached=prevDone[i]===true && actual>=p.target;
+    return targetReached ? actual : Math.max(1,actual-1);
+  });
+}
+
 function render(){
 let saved=load().find(x=>x.date===TODAY),out="",settings=getSettings();
 for(const [name,p] of Object.entries(PLAN)){
 if(p.kind==="sets"){
-let vals=saved?.exercises?.[name]?.values||Array(p.sets).fill(p.target), done=saved?.exercises?.[name]?.done||[];
+let vals=saved?.exercises?.[name]?.values||getAdaptiveValues(name,p,saved), done=saved?.exercises?.[name]?.done||[];
 out+=`<div class="exercise"><h3>${name}</h3><div class="muted">Target: ${p.sets} × ${p.target} ${p.unit} · Rest ${fmt(settings[name])}</div><div class="sets">`;
 for(let i=0;i<p.sets;i++)out+=`<label>Set ${i+1}<input data-v="${name}" data-i="${i}" type="number" min="0" value="${vals[i]??p.target}"><span><input type="checkbox" data-d="${name}" data-i="${i}" ${done[i]?"checked":""}> done</span></label>`;
 out+=`</div><div class="timerbox"><div class="timer" id="r${btoa(name)}">${fmt(settings[name])}</div><div class="row"><button class="alt" onclick="restStart('${name}',${settings[name]})">▶ Rest</button><button class="alt" onclick="restReset('${name}',${settings[name]})">↻ Reset</button></div></div></div>`;
