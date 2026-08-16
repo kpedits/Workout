@@ -1,15 +1,5 @@
-# Workout Progress v2
-
-Upload `index.html`, `manifest.json`, and `sw.js` to the root of the GitHub Pages repository.
-
-Features:
-- Today's workout
-- Edit saved workouts
-- Delete saved workouts
-- Local browser storage
-- JSON export/import backup
-- Clear all data
-- Progress statistics
-- Exercise progress graph using first-set actual values
-
-No server/database is used for workout results.
+# Workout Tracker v3
+Strength exercises: default target + actual sets + checkboxes + rest timer.
+Treadmill/skipping: countdown timers.
+Includes local save, edit/delete, JSON backup, stats, graph, and 3 days dummy data.
+Upload index.html, manifest.json and sw.js to the root of GitHub Pages.
