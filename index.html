@@ -31,6 +31,10 @@ button.alt{background:var(--btnAlt);color:var(--btnAltText)}#themeToggle{width:a
 .history{border-top:1px solid var(--line);padding:12px 0}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .stat{text-align:center;background:var(--surface);padding:10px;border-radius:10px}.stat b{display:block;font-size:20px}
 .tempo{background:var(--surface);padding:9px;border-radius:9px;margin:7px 0}
+.trendbox{margin-top:10px}.trendbox select{max-width:320px}
+.linechart{height:190px;background:var(--surface);border-radius:10px;padding:8px;overflow:auto}
+.linechart svg{display:block}.legend{display:flex;gap:10px;font-size:12px;color:var(--muted);margin-top:6px}
+.editing{margin-top:8px;padding:8px;border-radius:8px;background:var(--surface);font-size:13px}
 @media(max-width:520px){.setrow{grid-template-columns:1fr 80px 70px}}
 </style></head>
 <body>
@@ -40,7 +44,7 @@ button.alt{background:var(--btnAlt);color:var(--btnAltText)}#themeToggle{width:a
 <select id="dayPick" style="margin-top:10px"></select></section>
 
 <section class="card"><h2>Today's Circuit</h2><div id="workout"></div>
-<button id="save">✓ DONE — SAVE WORKOUT</button><div id="msg"></div></section>
+<button id="save">✓ DONE — SAVE WORKOUT</button><button id="cancelEdit" class="alt" style="margin-top:8px;display:none">Cancel Edit Mode</button><div id="msg"></div></section>
 
 <section class="card"><h2>⚙️ Editable Default Settings</h2><div id="settings"></div>
 <button id="saveSettings">Save Default Settings</button>
@@ -161,14 +165,30 @@ function startTimer(i){clearInterval(timers[i]);let el=document.getElementById("
 function pauseTimer(i){clearInterval(timers[i])}
 function resetTimer(i,s){clearInterval(timers[i]);document.getElementById("timer"+i).textContent=fmt(s);document.getElementById("completed"+i).value=s}
 function saveWorkout(){
- let day=+document.getElementById('dayPick').value,p=PROGRAM[day],date=new Date().toISOString().slice(0,10),data={date,day,completedAt:new Date().toISOString(),exercises:{}};
+ let day=+document.getElementById('dayPick').value,p=PROGRAM[day],editId=document.getElementById('save').dataset.editId||"",date=editId?editId.split("|")[0]:new Date().toISOString().slice(0,10),data={date,day,completedAt:new Date().toISOString(),exercises:{}};
  p.items.forEach((it,i)=>{let name=it[0];
    if(it[1]==="reps"){
      let sets=[...document.querySelectorAll(`[data-name="${encodeURIComponent(name)}"]`)].map((x,r)=>({reps:+x.value||0,done:document.querySelector(`[data-done="${encodeURIComponent(name)}"][data-r="${r}"]`).checked}));
      data.exercises[name]={kind:"reps",sets,target:[it[2],it[3]]};
    }else data.exercises[name]={kind:"time",completed:+document.getElementById("completed"+i).value||0,done:document.getElementById("doneTime"+i).checked,target:it[3]};
  });
- let a=load().filter(x=>!(x.date===date&&x.day===day));a.push(data);store(a);document.getElementById('msg').innerHTML='<div class="ok">✓ Saved. Defaults adapt by +1 per 3 completed and -1 per 2 skipped sessions.</div>';renderHistory();renderStats();renderProgress();
+ let a=load().filter(x=>!(x.date===date&&x.day===day));a.push(data);store(a);
+ let saveBtn=document.getElementById('save'),cancel=document.getElementById('cancelEdit');
+ if(editId){saveBtn.dataset.editId="";saveBtn.textContent='✓ DONE — SAVE WORKOUT';if(cancel)cancel.style.display='none';document.getElementById('msg').innerHTML='<div class="ok">✓ Updated selected day entry.</div>'}
+ else document.getElementById('msg').innerHTML='<div class="ok">✓ Saved. Defaults adapt by +1 per 3 completed and -1 per 2 skipped sessions.</div>';
+ render();renderSettings();renderHistory();renderStats();renderProgress();
+}
+function startEdit(date,day){
+ document.getElementById('dayPick').value=day;render();renderSettings();
+ let rec=load().find(x=>x.date===date&&x.day===day);if(!rec)return;
+ Object.entries(rec.exercises).forEach(([name,e],idx)=>{
+   if(e.kind==="reps"){(e.sets||[]).forEach((s,r)=>{let i=document.querySelector(`[data-name="${encodeURIComponent(name)}"][data-r="${r}"]`),d=document.querySelector(`[data-done="${encodeURIComponent(name)}"][data-r="${r}"]`);if(i)i.value=s.reps;if(d)d.checked=!!s.done})}
+   else{let c=document.getElementById("completed"+idx),d=document.getElementById("doneTime"+idx),t=document.getElementById("timer"+idx);if(c)c.value=e.completed??0;if(d)d.checked=!!e.done;if(t)t.textContent=fmt(e.completed??0)}
+ });
+ let saveBtn=document.getElementById('save'),cancel=document.getElementById('cancelEdit');
+ saveBtn.dataset.editId=`${date}|${day}`;saveBtn.textContent=`✓ UPDATE ${date} (Day ${day})`;if(cancel)cancel.style.display='inline-block';
+ document.getElementById('msg').innerHTML=`<div class="editing">Editing ${date} Day ${day}. Update values and press save.</div>`;
+ window.scrollTo({top:0,behavior:'smooth'});
 }
 function addDemoData(){
  let now=new Date(),a=load();
@@ -189,7 +209,7 @@ function addDemoData(){
  }
  store(a);document.getElementById('msg').innerHTML='<div class="ok">✓ Added 2 weeks of demo data. Switch day to view/edit day-based defaults and progress.</div>';render();renderSettings();renderHistory();renderStats();renderProgress();
 }
-function renderHistory(){let a=load().sort((x,y)=>y.date.localeCompare(x.date));document.getElementById('history').innerHTML=a.length?a.map(x=>`<div class="history"><b>${x.date} — Day ${x.day}</b><br>${Object.entries(x.exercises).map(([n,e])=>e.kind==="reps"?`${n}: ${e.sets.map(s=>s.reps+(s.done?" ✓":"")).join(" / ")}`:`${n}: ${fmt(e.completed)}${e.done?" ✓":""}`).join("<br>")}</div>`).join(""):"<span class='muted'>No saved workouts.</span>"}
+function renderHistory(){let a=load().sort((x,y)=>y.date.localeCompare(x.date));document.getElementById('history').innerHTML=a.length?a.map(x=>`<div class="history"><b>${x.date} — Day ${x.day}</b> <button class="alt" style="padding:4px 8px;font-size:12px" onclick="startEdit('${x.date}',${x.day})">Edit</button><br>${Object.entries(x.exercises).map(([n,e])=>e.kind==="reps"?`${n}: ${e.sets.map(s=>s.reps+(s.done?" ✓":"")).join(" / ")}`:`${n}: ${fmt(e.completed)}${e.done?" ✓":""}`).join("<br>")}</div>`).join(""):"<span class='muted'>No saved workouts.</span>"}
 function renderStats(){let a=load(),sets=a.reduce((z,x)=>z+Object.values(x.exercises).reduce((q,e)=>q+(e.kind==="reps"?e.sets.length:0),0),0);document.getElementById('stats').innerHTML=`<div class="stat"><b>${a.length}</b>sessions</div><div class="stat"><b>${sets}</b>sets tracked</div><div class="stat"><b>${new Set(a.map(x=>x.day)).size}</b>days used</div>`}
 function renderProgress(){
  let day=+document.getElementById('dayPick').value,a=load().filter(x=>x.day===day).sort((x,y)=>x.date.localeCompare(y.date));
@@ -197,8 +217,11 @@ function renderProgress(){
  let totals=a.reduce((z,x)=>{Object.values(x.exercises).forEach(e=>{if(e.kind==="reps"){let done=e.sets.filter(s=>s.done);z.done+=done.length;z.total+=e.sets.length}else{z.done+=(e.done?1:0);z.total+=1}});return z},{done:0,total:0});
  let points=a.map(x=>{let done=0,total=0;Object.values(x.exercises).forEach(e=>{if(e.kind==="reps"){done+=e.sets.filter(s=>s.done).length;total+=e.sets.length}else{done+=(e.done?1:0);total+=1}});return {date:x.date,label:x.date.slice(5).replace("-","/"),pct:total?Math.round(done*100/total):0}});
  let bars=points.map(p=>`<div class="bar" style="height:${Math.max(6,p.pct)}%" title="${p.date}: ${p.pct}%"><span>${p.pct}%</span><em>${p.label}</em></div>`).join("");
- let pct=totals.total?Math.round(totals.done*100/totals.total):0,last=a[a.length-1],first=a[0];
- document.getElementById('progress').innerHTML=`<div class="ok"><b>Day ${day} progress:</b> ${totals.done}/${totals.total} items done (${pct}%) across ${a.length} session${a.length>1?"s":""}. Latest: ${last.date}</div><div class="graph"><div class="gridline" style="bottom:25%"><span>25%</span></div><div class="gridline" style="bottom:50%"><span>50%</span></div><div class="gridline" style="bottom:75%"><span>75%</span></div><div class="gridline" style="bottom:100%"><span>100%</span></div><div class="bars">${bars}</div></div><div class="muted">Trend window: ${first.date} → ${last.date}. Bars show completion % per saved session.</div>`+a.map(x=>`<p><b>${x.date}</b><br>${Object.entries(x.exercises).map(([n,e])=>e.kind==="reps"?`${n}: ${e.sets.map(s=>s.reps+(s.done?"✓":"")).join(" / ")}`:`${n}: ${fmt(e.completed)}${e.done?" ✓":""}`).join(" · ")}</p>`).join("");
+ let pct=totals.total?Math.round(totals.done*100/totals.total):0,last=a[a.length-1],first=a[0],repNames=[...new Set(a.flatMap(x=>Object.entries(x.exercises).filter(([,e])=>e.kind==="reps").map(([n])=>n)))],selected=(document.getElementById('trendExercise')?.value)||repNames[0]||"";
+ let trend=selected?a.map(x=>{let e=x.exercises[selected];if(!e||e.kind!=="reps")return {date:x.date,val:0};let done=e.sets.filter(s=>s.done).map(s=>s.reps);return {date:x.date,val:done.length?Math.round(done.reduce((s,v)=>s+v,0)/done.length):0}}):[];
+ let max=Math.max(1,...trend.map(t=>t.val)),w=Math.max(320,trend.length*62),pts=trend.map((t,i)=>`${20+i*(w-40)/Math.max(1,trend.length-1)},${160-(t.val/max)*130}`).join(" "),labs=trend.map((t,i)=>`<text x="${20+i*(w-40)/Math.max(1,Math.max(1,trend.length-1))}" y="178" font-size="10" fill="var(--muted)" text-anchor="middle">${t.date.slice(5).replace("-","/")}</text>`).join(""),opts=repNames.map(n=>`<option ${n===selected?"selected":""}>${n}</option>`).join("");
+ document.getElementById('progress').innerHTML=`<div class="ok"><b>Day ${day} progress:</b> ${totals.done}/${totals.total} items done (${pct}%) across ${a.length} session${a.length>1?"s":""}. Latest: ${last.date}</div><div class="graph"><div class="gridline" style="bottom:25%"><span>25%</span></div><div class="gridline" style="bottom:50%"><span>50%</span></div><div class="gridline" style="bottom:75%"><span>75%</span></div><div class="gridline" style="bottom:100%"><span>100%</span></div><div class="bars">${bars}</div></div><div class="trendbox"><label>Exercise moving graph<select id="trendExercise">${opts}</select></label><div class="linechart"><svg width="${w}" height="185" viewBox="0 0 ${w} 185"><line x1="20" y1="160" x2="${w-20}" y2="160" stroke="var(--line)"/><line x1="20" y1="20" x2="20" y2="160" stroke="var(--line)"/><polyline fill="none" stroke="#f59e0b" stroke-width="3" points="${pts}"/>${trend.map((t,i)=>`<circle cx="${20+i*(w-40)/Math.max(1,trend.length-1)}" cy="${160-(t.val/max)*130}" r="4" fill="#f59e0b"><title>${t.date}: ${t.val} reps</title></circle>`).join("")}${labs}</svg></div><div class="legend"><span>● Orange line: average completed reps for selected exercise</span></div></div><div class="muted">Trend window: ${first.date} → ${last.date}. Bars show completion % per saved session.</div>`+a.map(x=>`<p><b>${x.date}</b><br>${Object.entries(x.exercises).map(([n,e])=>e.kind==="reps"?`${n}: ${e.sets.map(s=>s.reps+(s.done?"✓":"")).join(" / ")}`:`${n}: ${fmt(e.completed)}${e.done?" ✓":""}`).join(" · ")}</p>`).join("");
+ let sel=document.getElementById('trendExercise');if(sel)sel.onchange=renderProgress;
 }
 function init(){
  applyTheme(localStorage.getItem(THEMEKEY)||"night");
@@ -210,6 +233,7 @@ function init(){
  document.getElementById('export').onclick=async()=>{let now=new Date(),dd=String(now.getDate()).padStart(2,"0"),mm=String(now.getMonth()+1).padStart(2,"0"),yyyy=now.getFullYear(),day=+document.getElementById('dayPick').value,filename=`Workout_Day${day}_${dd}_${mm}_${yyyy}.json`,payload=JSON.stringify({workouts:load(),defaults:defaults()},null,2),msg=document.getElementById('msg');if(window.showSaveFilePicker){try{let h=await window.showSaveFilePicker({suggestedName:filename,types:[{description:"JSON",accept:{"application/json":[".json"]}}]}),w=await h.createWritable();await w.write(payload);await w.close();if(msg)msg.innerHTML='<div class="ok">✓ Exported using save picker.</div>';return}catch(e){if(e?.name==="AbortError")return}}let b=new Blob([payload],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);if(msg)msg.innerHTML='<div class="muted">Save picker not supported here. File downloaded using browser fallback.</div>'};
  document.getElementById('import').onclick=()=>document.getElementById('file').click();document.getElementById('file').onchange=async e=>{try{let f=e.target.files?.[0];if(!f)return;let x=JSON.parse(await f.text());if(Array.isArray(x)){store(x)}else{store(x.workouts||[]);if(x.defaults)localStorage.setItem(SETKEY,JSON.stringify(x.defaults))}alert("Imported");location.reload()}catch{alert("Invalid backup")}};
  document.getElementById('demoData').onclick=()=>{if(confirm("Add 2 weeks of demo data for graph testing?"))addDemoData()};
+ document.getElementById('cancelEdit').onclick=()=>{document.getElementById('save').dataset.editId="";document.getElementById('save').textContent='✓ DONE — SAVE WORKOUT';document.getElementById('cancelEdit').style.display='none';document.getElementById('msg').innerHTML='';render()};
  document.getElementById('clear').onclick=()=>{if(confirm("Delete all workout history and settings?")){localStorage.removeItem(DATAKEY);localStorage.removeItem(SETKEY);location.reload()}};
  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{})}
  render();renderSettings();renderHistory();renderStats();renderProgress();
