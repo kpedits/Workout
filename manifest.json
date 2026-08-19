@@ -1,6 +1,6 @@
 {
-  "name": "Greek God Upright Circuit",
-  "short_name": "Greek God",
+  "name": "Workout Tracker",
+  "short_name": "Workout",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#f3f4f6",
