@@ -5,22 +5,31 @@
 <meta name="theme-color" content="#111827"><link rel="manifest" href="manifest.json">
 <title>Workout Tracker v7</title>
 <style>
-:root{--bg:#0b1220;--text:#e5e7eb;--header:#020617;--card:#111827;--line:#1f2937;--muted:#94a3b8;--inputBg:#0f172a;--inputBorder:#334155;--btn:#2563eb;--btnText:#fff;--btnAlt:#1f2937;--btnAltText:#e5e7eb;--surface:#0f172a;--okBg:#052e1a;--okText:#86efac}
-body.day{--bg:#f3f4f6;--text:#111827;--header:#111827;--card:#fff;--line:#eee;--muted:#6b7280;--inputBg:#fff;--inputBorder:#d1d5db;--btn:#111827;--btnText:#fff;--btnAlt:#e5e7eb;--btnAltText:#111827;--surface:#f8fafc;--okBg:#ecfdf5;--okText:#166534}
+:root{--bg:#0b1220;--text:#e5e7eb;--header:#020617;--card:#111827;--line:#1f2937;--muted:#94a3b8;--inputBg:#0f172a;--inputBorder:#334155;--btn:#2563eb;--btnText:#fff;--btnAlt:#1f2937;--btnAltText:#e5e7eb;--surface:#0f172a;--okBg:#052e1a;--okText:#86efac;--focus:#22d3ee}
+body.day{--bg:#f3f4f6;--text:#111827;--header:#111827;--card:#fff;--line:#eee;--muted:#6b7280;--inputBg:#fff;--inputBorder:#d1d5db;--btn:#111827;--btnText:#fff;--btnAlt:#e5e7eb;--btnAltText:#111827;--surface:#f8fafc;--okBg:#ecfdf5;--okText:#166534;--focus:#0ea5e9}
 body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,sans-serif}
 header{background:var(--header);color:#fff;padding:18px}main{max-width:820px;margin:auto;padding:14px}
 .header-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .card{background:var(--card);border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 2px 10px #0002}
+.card.primary{border:1px solid #3b82f655}
+.card.secondary{opacity:.98}
 .exercise{border-top:1px solid var(--line);padding:15px 0}.exercise:first-child{border:0}
 
 h1,h2,h3{margin:0 0 8px}.muted{color:var(--muted);font-size:13px}
 input,select{width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--inputBorder);border-radius:9px;font:inherit;margin-top:4px;background:var(--inputBg);color:var(--text)}
 button{padding:10px 12px;border:0;border-radius:10px;background:var(--btn);color:var(--btnText);font-weight:600}
 button.alt{background:var(--btnAlt);color:var(--btnAltText)}#themeToggle{width:auto;padding:8px 10px;font-size:14px}
+.savebar{position:sticky;bottom:0;background:linear-gradient(180deg,#0000,var(--card) 30%);padding-top:10px;margin-top:8px}
+details>summary{cursor:pointer;font-weight:700;list-style:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary:after{content:" +";color:var(--muted);font-weight:600}
+details[open]>summary:after{content:" -"}
+details>div{margin-top:10px}
 .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}.row button{flex:1}
 .timer{text-align:center;font-size:42px;font-variant-numeric:tabular-nums;padding:7px}
 .timerbox{background:var(--surface);border-radius:12px;padding:10px;margin-top:9px}
-.setrow{display:grid;grid-template-columns:1fr 100px 80px;gap:8px;align-items:end;margin:7px 0}
+.setrow{display:grid;grid-template-columns:80px 1fr 88px;gap:8px;align-items:end;margin:8px 0}
+.settitle{align-self:center}
 .ok{background:var(--okBg);color:var(--okText);padding:11px;border-radius:10px;margin-top:10px}
 #history{max-height:520px;overflow:auto;padding-right:4px}
 .history{border-top:1px solid var(--line);padding:12px 0}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
@@ -33,7 +42,12 @@ button.alt{background:var(--btnAlt);color:var(--btnAltText)}#themeToggle{width:a
 .chip{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--inputBg);border:1px solid var(--inputBorder);font-size:11px;color:var(--text)}
 .swatch{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
 .editing{margin-top:8px;padding:8px;border-radius:8px;background:var(--surface);font-size:13px}
-@media(max-width:520px){.setrow{grid-template-columns:1fr 80px 70px}}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+@media(max-width:640px){
+  .setrow{grid-template-columns:1fr 90px}
+  .settitle{grid-column:1/-1}
+  #save,#cancelEdit{width:100%}
+}
 </style></head>
 <body>
 <header><div class="header-top"><h1>Workout Tracker</h1><button id="themeToggle" class="alt" type="button">☀️ Day</button></div><div id="date"></div></header>
@@ -41,17 +55,17 @@ button.alt{background:var(--btnAlt);color:var(--btnAltText)}#themeToggle{width:a
 <section class="card"><h2 id="dayTitle"></h2><div id="dayMeta" class="muted"></div>
 <select id="dayPick" style="margin-top:10px"></select></section>
 
-<section class="card"><h2>Today's Circuit</h2><div id="workout"></div>
-<button id="save">✓ DONE — SAVE WORKOUT</button><button id="cancelEdit" class="alt" style="margin-top:8px;display:none">Cancel Edit Mode</button><div id="msg"></div></section>
+<section class="card primary"><h2>Today's Circuit</h2><div id="workout"></div>
+<div class="savebar"><button id="save">✓ DONE — SAVE WORKOUT</button><button id="cancelEdit" class="alt" style="margin-top:8px;display:none">Cancel Edit Mode</button></div><div id="msg" aria-live="polite"></div></section>
 
-<section class="card"><h2>⚙️ Editable Default Settings</h2><div id="settings"></div>
+<section class="card secondary"><details><summary>⚙️ Editable Default Settings</summary><div><div id="settings"></div>
 <button id="saveSettings">Save Default Settings</button>
-<p class="muted">Defaults are separate from workout history. Rep defaults start at 4, then adapt by +1 every 3 completed sessions and -1 every 2 skipped sessions (per day/exercise).</p></section>
+<p class="muted">Defaults are separate from workout history. Rep defaults start at 4, then adapt by +1 every 3 completed sessions and -1 every 2 skipped sessions (per day/exercise).</p></div></details></section>
 
-<section class="card"><h2>Progress</h2><div id="stats" class="stats"></div><div class="filterrow"><label>Day<select id="progressDay"></select></label><label>From<input id="fromDate" type="date"></label><label>To<input id="toDate" type="date"></label></div><div id="progress"></div></section>
-<section class="card"><h2>History</h2><div id="history"></div></section>
-<section class="card"><h2>Data</h2><div class="row"><button id="export">Export</button><button id="import" class="alt">Import</button><button id="demoData" class="alt">Add 3 Weeks Demo</button><button id="clear" class="alt">Clear</button></div>
-<input id="file" type="file" accept="application/json" hidden><p class="muted">Results stay in this browser.</p></section>
+<section class="card secondary"><h2>Progress</h2><div id="stats" class="stats"></div><div class="filterrow"><label>Day<select id="progressDay"></select></label><label>From<input id="fromDate" type="date"></label><label>To<input id="toDate" type="date"></label></div><div id="progress"></div></section>
+<section class="card secondary"><details><summary>History</summary><div id="history"></div></details></section>
+<section class="card secondary"><details><summary>Data</summary><div><div class="row"><button id="export">Export</button><button id="import" class="alt">Import</button><button id="demoData" class="alt">Add 3 Weeks Demo</button><button id="clear" class="alt">Clear</button></div>
+<input id="file" type="file" accept="application/json" hidden><p class="muted">Results stay in this browser.</p></div></details></section>
 </main>
 
 <script>
@@ -147,13 +161,13 @@ function render(){
    if(it[1]==="reps"){
      let rows=saved?.exercises?.[name]?.sets||Array.from({length:p.rounds||1},()=>({reps:ad,done:false}));
      out+=`<div class="exercise"><h3>${name}</h3><div class="muted">Program: ${it[2]}–${it[3]} reps</div><div class="tempo"><b>Tempo:</b> ${it[4]}</div><div class="muted">${it[5]}</div>`;
-     for(let r=0;r<(p.rounds||1);r++){let x=rows[r]||{reps:ad,done:false};out+=`<div class="setrow"><b>Set ${r+1}</b><label>Reps<input data-name="${encodeURIComponent(name)}" data-r="${r}" type="number" min="0" value="${x.reps}"></label><label>Done<br><input data-done="${encodeURIComponent(name)}" data-r="${r}" type="checkbox" ${x.done?"checked":""}></label></div>`}
+     for(let r=0;r<(p.rounds||1);r++){let x=rows[r]||{reps:ad,done:false};out+=`<div class="setrow"><div class="settitle"><b>Set ${r+1}</b></div><label class="setreps">Reps<input data-name="${encodeURIComponent(name)}" data-r="${r}" type="number" min="0" value="${x.reps}"></label><label class="setdone">Done<br><input data-done="${encodeURIComponent(name)}" data-r="${r}" type="checkbox" ${x.done?"checked":""}></label></div>`}
      out+=`</div>`;
    }else{
      let cur=saved?.exercises?.[name]?.completed??ad;
      out+=`<div class="exercise"><h3>${name}</h3><div class="tempo"><b>Tempo:</b> ${it[4]}</div><div class="muted">${it[5]} · Default ${fmt(def)}</div>
      <div class="timerbox"><div class="timer" id="timer${i}">${fmt(cur)}</div><div class="row"><button onclick="startTimer(${i})">▶ Start</button><button class="alt" onclick="pauseTimer(${i})">⏸ Pause</button><button class="alt" onclick="resetTimer(${i},${def})">↻ Reset</button></div>
-     <label>Completed seconds<input id="completed${i}" type="number" min="0" value="${cur}"></label><label>Done<br><input id="doneTime${i}" type="checkbox" ${saved?.exercises?.[name]?.done?"checked":""}></label></div></div>`;
+     <label>Remaining seconds<input id="completed${i}" type="number" min="0" value="${cur}"></label><label>Done<br><input id="doneTime${i}" type="checkbox" ${saved?.exercises?.[name]?.done?"checked":""}></label></div></div>`;
    }
  });
  out+=`<div class="muted"><b>Transition:</b> ${d.transition}s · <b>Active recovery:</b> ${d.activeRecovery}s</div>`;
@@ -223,7 +237,7 @@ function renderProgress(){
  let colors=["#f59e0b","#60a5fa","#34d399","#a78bfa","#f472b6","#fb7185","#22d3ee"];
  let lines=dayExercises.map((name,idx)=>{let type=dayItems.find(it=>it[0]===name)?.[1]||"reps";let points=a.map(x=>{let e=x.exercises[name];if(!e)return 0;if(type==="reps"){let done=e.kind==="reps"?e.sets.filter(s=>s.done).map(s=>s.reps):[];return done.length?Math.round(done.reduce((s,v)=>s+v,0)/done.length):0}return e.kind==="time"?(e.completed||0):0});let unit=type==="reps"?"reps":"sec",max=Math.max(1,...points),coords=points.map((v,i)=>`${20+i*(w-40)/Math.max(1,points.length-1)},${160-(v/max)*130}`).join(" "),dots=points.map((v,i)=>`<circle cx="${20+i*(w-40)/Math.max(1,points.length-1)}" cy="${160-(v/max)*130}" r="4" fill="${colors[idx%colors.length]}"><title>${a[i].date}: ${unit==="reps"?v+" reps":fmt(v)}</title></circle>`).join("");return {name,type,color:colors[idx%colors.length],coords,dots,unit}});
  let labs=a.map((t,i)=>`<text x="${20+i*(w-40)/Math.max(1,Math.max(1,a.length-1))}" y="178" font-size="10" fill="var(--muted)" text-anchor="middle">${t.date.slice(5).replace("-","/")}</text>`).join(""),legend=lines.map(l=>`<span><i class="swatch" style="background:${l.color}"></i>${l.name} (${l.type==="reps"?"reps":"mm:ss"})</span>`).join(" ");
- document.getElementById('progress').innerHTML=`<div class="ok"><b>Day ${day} progress:</b> ${totals.done}/${totals.total} items done (${pct}%) across ${a.length} session${a.length>1?"s":""}. Latest: ${last.date}</div><div class="trendbox"><label>All exercise moving graph (Day${day})</label><div class="linechart"><svg width="${w}" height="185" viewBox="0 0 ${w} 185"><line x1="20" y1="160" x2="${w-20}" y2="160" stroke="var(--line)"/><line x1="20" y1="20" x2="20" y2="160" stroke="var(--line)"/>${lines.map(l=>`<polyline fill="none" stroke="${l.color}" stroke-width="3" points="${l.coords}"/>${l.dots}`).join("")}${labs}</svg></div><div class="legend">${legend}</div></div><div class="muted">Trend window: ${first.date} → ${last.date}. Date range: ${from||first.date} to ${to||last.date}.</div>`+a.map(x=>`<p><b>${x.date}</b><br>${Object.entries(x.exercises).map(([n,e])=>e.kind==="reps"?`${n}: ${e.sets.map(s=>s.reps+(s.done?"✓":"")).join(" / ")}`:`${n}: ${fmt(e.completed)}${e.done?" ✓":""}`).join(" · ")}</p>`).join("");
+ document.getElementById('progress').innerHTML=`<div class="ok"><b>Day ${day} progress:</b> ${totals.done}/${totals.total} items done (${pct}%) across ${a.length} session${a.length>1?"s":""}. Latest: ${last.date}</div><div class="trendbox"><label>All exercise trend (Day ${day})</label><div class="linechart"><svg width="${w}" height="185" viewBox="0 0 ${w} 185"><line x1="20" y1="160" x2="${w-20}" y2="160" stroke="var(--line)"/><line x1="20" y1="20" x2="20" y2="160" stroke="var(--line)"/>${lines.map(l=>`<polyline fill="none" stroke="${l.color}" stroke-width="3" points="${l.coords}"/>${l.dots}`).join("")}${labs}</svg></div><div class="legend">${legend}</div></div><div class="muted">Trend window: ${first.date} → ${last.date}. Date range: ${from||first.date} to ${to||last.date}. Each exercise is scaled to its own range.</div>`+a.map(x=>`<p><b>${x.date}</b><br>${Object.entries(x.exercises).map(([n,e])=>e.kind==="reps"?`${n}: ${e.sets.map(s=>s.reps+(s.done?"✓":"")).join(" / ")}`:`${n}: ${fmt(e.completed)}${e.done?" ✓":""}`).join(" · ")}</p>`).join("");
 }
 function init(){
  applyTheme(localStorage.getItem(THEMEKEY)||"night");

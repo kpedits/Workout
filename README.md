@@ -1,4 +1,4 @@
-# Workout Tracker v7
+# Workout Tracker
 
 A browser-based workout tracker for a 7-day program with local persistence, adaptive defaults, progress graphs, and import/export backup support.
 
