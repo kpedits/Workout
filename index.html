@@ -37,6 +37,7 @@ details>div{margin-top:10px}
 .tempo{background:var(--surface);padding:9px;border-radius:9px;margin:7px 0}
 .trendbox{margin-top:10px}.trendbox select{max-width:320px}
 .filterrow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px}
+.filterrow>label{display:block;font-size:12px;color:var(--muted)}
 .linechart{height:190px;background:var(--surface);border-radius:10px;padding:8px;overflow:auto}
 .linechart svg{display:block}.legend{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
 .chip{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--inputBg);border:1px solid var(--inputBorder);font-size:11px;color:var(--text)}
@@ -47,6 +48,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
   .setrow{grid-template-columns:1fr 90px}
   .settitle{grid-column:1/-1}
   #save,#cancelEdit{width:100%}
+  .filterrow{grid-template-columns:1fr 1fr}
+  .filterrow>label:first-child{grid-column:1/-1}
 }
 </style></head>
 <body>
