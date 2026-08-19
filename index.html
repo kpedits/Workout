@@ -12,13 +12,7 @@ header{background:var(--header);color:#fff;padding:18px}main{max-width:820px;mar
 .header-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .card{background:var(--card);border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 2px 10px #0002}
 .exercise{border-top:1px solid var(--line);padding:15px 0}.exercise:first-child{border:0}
-.graph{position:relative;height:170px;margin:10px 0;padding:8px;border-radius:10px;background:var(--surface);overflow:auto}
-.gridline{position:absolute;left:8px;right:8px;border-top:1px dashed var(--line);opacity:.8}
-.gridline span{position:absolute;right:0;top:-10px;font-size:10px;color:var(--muted);background:var(--surface);padding:0 3px}
-.bars{position:relative;z-index:1;display:flex;align-items:flex-end;gap:8px;height:100%;min-width:100%}
-.bar{flex:1;min-width:26px;background:linear-gradient(180deg,#22d3ee,#2563eb);border-radius:8px 8px 2px 2px;position:relative}
-.bar span{position:absolute;bottom:100%;left:50%;transform:translate(-50%,-3px);font-size:11px;color:var(--muted);white-space:nowrap}
-.bar em{position:absolute;top:calc(100% + 4px);left:50%;transform:translateX(-50%);font-style:normal;font-size:10px;color:var(--muted);white-space:nowrap}
+
 h1,h2,h3{margin:0 0 8px}.muted{color:var(--muted);font-size:13px}
 input,select{width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--inputBorder);border-radius:9px;font:inherit;margin-top:4px;background:var(--inputBg);color:var(--text)}
 button{padding:10px 12px;border:0;border-radius:10px;background:var(--btn);color:var(--btnText);font-weight:600}
@@ -33,7 +27,10 @@ button.alt{background:var(--btnAlt);color:var(--btnAltText)}#themeToggle{width:a
 .tempo{background:var(--surface);padding:9px;border-radius:9px;margin:7px 0}
 .trendbox{margin-top:10px}.trendbox select{max-width:320px}
 .linechart{height:190px;background:var(--surface);border-radius:10px;padding:8px;overflow:auto}
-.linechart svg{display:block}.legend{display:flex;gap:10px;font-size:12px;color:var(--muted);margin-top:6px}
+.linechart svg{display:block}.legend{display:flex;gap:10px;align-items:center;font-size:12px;color:var(--muted);margin-top:6px}
+.chip{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--inputBg);border:1px solid var(--inputBorder);font-size:11px;color:var(--text)}
+.chip-reps{background:#3f1d00;border-color:#f59e0b;color:#fcd34d}
+.chip-time{background:#0c1e3f;border-color:#60a5fa;color:#bfdbfe}
 .editing{margin-top:8px;padding:8px;border-radius:8px;background:var(--surface);font-size:13px}
 @media(max-width:520px){.setrow{grid-template-columns:1fr 80px 70px}}
 </style></head>
@@ -165,7 +162,7 @@ function startTimer(i){clearInterval(timers[i]);let el=document.getElementById("
 function pauseTimer(i){clearInterval(timers[i])}
 function resetTimer(i,s){clearInterval(timers[i]);document.getElementById("timer"+i).textContent=fmt(s);document.getElementById("completed"+i).value=s}
 function saveWorkout(){
- let day=+document.getElementById('dayPick').value,p=PROGRAM[day],editId=document.getElementById('save').dataset.editId||"",date=editId?editId.split("|")[0]:new Date().toISOString().slice(0,10),data={date,day,completedAt:new Date().toISOString(),exercises:{}};
+ let editId=document.getElementById('save').dataset.editId||"",parts=editId?editId.split("|"):null,day=parts?+parts[1]:+document.getElementById('dayPick').value,p=PROGRAM[day],date=parts?parts[0]:new Date().toISOString().slice(0,10),data={date,day,completedAt:new Date().toISOString(),exercises:{}};
  p.items.forEach((it,i)=>{let name=it[0];
    if(it[1]==="reps"){
      let sets=[...document.querySelectorAll(`[data-name="${encodeURIComponent(name)}"]`)].map((x,r)=>({reps:+x.value||0,done:document.querySelector(`[data-done="${encodeURIComponent(name)}"][data-r="${r}"]`).checked}));
@@ -181,7 +178,9 @@ function saveWorkout(){
 function startEdit(date,day){
  document.getElementById('dayPick').value=day;render();renderSettings();
  let rec=load().find(x=>x.date===date&&x.day===day);if(!rec)return;
- Object.entries(rec.exercises).forEach(([name,e],idx)=>{
+ let items=PROGRAM[day].items;
+ Object.entries(rec.exercises).forEach(([name,e])=>{
+   let idx=items.findIndex(it=>it[0]===name);if(idx<0)return;
    if(e.kind==="reps"){(e.sets||[]).forEach((s,r)=>{let i=document.querySelector(`[data-name="${encodeURIComponent(name)}"][data-r="${r}"]`),d=document.querySelector(`[data-done="${encodeURIComponent(name)}"][data-r="${r}"]`);if(i)i.value=s.reps;if(d)d.checked=!!s.done})}
    else{let c=document.getElementById("completed"+idx),d=document.getElementById("doneTime"+idx),t=document.getElementById("timer"+idx);if(c)c.value=e.completed??0;if(d)d.checked=!!e.done;if(t)t.textContent=fmt(e.completed??0)}
  });
@@ -215,12 +214,11 @@ function renderProgress(){
  let day=+document.getElementById('dayPick').value,a=load().filter(x=>x.day===day).sort((x,y)=>x.date.localeCompare(y.date));
  if(!a.length){document.getElementById('progress').innerHTML="<p class='muted'>Complete workouts to build progress.</p>";return}
  let totals=a.reduce((z,x)=>{Object.values(x.exercises).forEach(e=>{if(e.kind==="reps"){let done=e.sets.filter(s=>s.done);z.done+=done.length;z.total+=e.sets.length}else{z.done+=(e.done?1:0);z.total+=1}});return z},{done:0,total:0});
- let points=a.map(x=>{let done=0,total=0;Object.values(x.exercises).forEach(e=>{if(e.kind==="reps"){done+=e.sets.filter(s=>s.done).length;total+=e.sets.length}else{done+=(e.done?1:0);total+=1}});return {date:x.date,label:x.date.slice(5).replace("-","/"),pct:total?Math.round(done*100/total):0}});
- let bars=points.map(p=>`<div class="bar" style="height:${Math.max(6,p.pct)}%" title="${p.date}: ${p.pct}%"><span>${p.pct}%</span><em>${p.label}</em></div>`).join("");
- let pct=totals.total?Math.round(totals.done*100/totals.total):0,last=a[a.length-1],first=a[0],repNames=[...new Set(a.flatMap(x=>Object.entries(x.exercises).filter(([,e])=>e.kind==="reps").map(([n])=>n)))],selected=(document.getElementById('trendExercise')?.value)||repNames[0]||"";
- let trend=selected?a.map(x=>{let e=x.exercises[selected];if(!e||e.kind!=="reps")return {date:x.date,val:0};let done=e.sets.filter(s=>s.done).map(s=>s.reps);return {date:x.date,val:done.length?Math.round(done.reduce((s,v)=>s+v,0)/done.length):0}}):[];
- let max=Math.max(1,...trend.map(t=>t.val)),w=Math.max(320,trend.length*62),pts=trend.map((t,i)=>`${20+i*(w-40)/Math.max(1,trend.length-1)},${160-(t.val/max)*130}`).join(" "),labs=trend.map((t,i)=>`<text x="${20+i*(w-40)/Math.max(1,Math.max(1,trend.length-1))}" y="178" font-size="10" fill="var(--muted)" text-anchor="middle">${t.date.slice(5).replace("-","/")}</text>`).join(""),opts=repNames.map(n=>`<option ${n===selected?"selected":""}>${n}</option>`).join("");
- document.getElementById('progress').innerHTML=`<div class="ok"><b>Day ${day} progress:</b> ${totals.done}/${totals.total} items done (${pct}%) across ${a.length} session${a.length>1?"s":""}. Latest: ${last.date}</div><div class="graph"><div class="gridline" style="bottom:25%"><span>25%</span></div><div class="gridline" style="bottom:50%"><span>50%</span></div><div class="gridline" style="bottom:75%"><span>75%</span></div><div class="gridline" style="bottom:100%"><span>100%</span></div><div class="bars">${bars}</div></div><div class="trendbox"><label>Exercise moving graph<select id="trendExercise">${opts}</select></label><div class="linechart"><svg width="${w}" height="185" viewBox="0 0 ${w} 185"><line x1="20" y1="160" x2="${w-20}" y2="160" stroke="var(--line)"/><line x1="20" y1="20" x2="20" y2="160" stroke="var(--line)"/><polyline fill="none" stroke="#f59e0b" stroke-width="3" points="${pts}"/>${trend.map((t,i)=>`<circle cx="${20+i*(w-40)/Math.max(1,trend.length-1)}" cy="${160-(t.val/max)*130}" r="4" fill="#f59e0b"><title>${t.date}: ${t.val} reps</title></circle>`).join("")}${labs}</svg></div><div class="legend"><span>● Orange line: average completed reps for selected exercise</span></div></div><div class="muted">Trend window: ${first.date} → ${last.date}. Bars show completion % per saved session.</div>`+a.map(x=>`<p><b>${x.date}</b><br>${Object.entries(x.exercises).map(([n,e])=>e.kind==="reps"?`${n}: ${e.sets.map(s=>s.reps+(s.done?"✓":"")).join(" / ")}`:`${n}: ${fmt(e.completed)}${e.done?" ✓":""}`).join(" · ")}</p>`).join("");
+ let pct=totals.total?Math.round(totals.done*100/totals.total):0,last=a[a.length-1],first=a[0];
+ let dayItems=PROGRAM[day].items,dayExercises=dayItems.map(it=>it[0]),selectedRaw=document.getElementById('trendExercise')?.value||dayExercises[0]||"",selected=dayExercises.includes(selectedRaw)?selectedRaw:(dayExercises[0]||""),selectedType=dayItems.find(it=>it[0]===selected)?.[1]||"reps";
+ let trend=selected?a.map(x=>{let e=x.exercises[selected];if(!e)return {date:x.date,val:0};if(selectedType==="reps"){let done=e.kind==="reps"?e.sets.filter(s=>s.done).map(s=>s.reps):[];return {date:x.date,val:done.length?Math.round(done.reduce((s,v)=>s+v,0)/done.length):0}}return {date:x.date,val:e.kind==="time"?(e.completed||0):0}}):[];
+ let max=Math.max(1,...trend.map(t=>t.val)),w=Math.max(320,trend.length*62),pts=trend.map((t,i)=>`${20+i*(w-40)/Math.max(1,trend.length-1)},${160-(t.val/max)*130}`).join(" "),labs=trend.map((t,i)=>`<text x="${20+i*(w-40)/Math.max(1,Math.max(1,trend.length-1))}" y="178" font-size="10" fill="var(--muted)" text-anchor="middle">${t.date.slice(5).replace("-","/")}</text>`).join(""),opts=dayExercises.map(n=>`<option ${n===selected?"selected":""}>${n}</option>`).join(""),unit=selectedType==="reps"?"reps":"sec",lineColor=unit==="reps"?"#f59e0b":"#60a5fa",lineLabel=unit==="reps"?"average completed reps":"completed time";
+ document.getElementById('progress').innerHTML=`<div class="ok"><b>Day ${day} progress:</b> ${totals.done}/${totals.total} items done (${pct}%) across ${a.length} session${a.length>1?"s":""}. Latest: ${last.date}</div><div class="trendbox"><label>Exercise moving graph (day-wise)<select id="trendExercise">${opts}</select></label><div class="linechart"><svg width="${w}" height="185" viewBox="0 0 ${w} 185"><line x1="20" y1="160" x2="${w-20}" y2="160" stroke="var(--line)"/><line x1="20" y1="20" x2="20" y2="160" stroke="var(--line)"/><polyline fill="none" stroke="${lineColor}" stroke-width="3" points="${pts}"/>${trend.map((t,i)=>`<circle cx="${20+i*(w-40)/Math.max(1,trend.length-1)}" cy="${160-(t.val/max)*130}" r="4" fill="${lineColor}"><title>${t.date}: ${unit==="reps"?t.val+" reps":fmt(t.val)}</title></circle>`).join("")}${labs}</svg></div><div class="legend"><span class="chip ${unit==="reps"?"chip-reps":"chip-time"}">Unit: ${unit==="reps"?"reps":"mm:ss"}</span><span>● ${unit==="reps"?"Orange":"Blue"} line: ${lineLabel} for selected exercise</span></div></div><div class="muted">Trend window: ${first.date} → ${last.date}.</div>`+a.map(x=>`<p><b>${x.date}</b><br>${Object.entries(x.exercises).map(([n,e])=>e.kind==="reps"?`${n}: ${e.sets.map(s=>s.reps+(s.done?"✓":"")).join(" / ")}`:`${n}: ${fmt(e.completed)}${e.done?" ✓":""}`).join(" · ")}</p>`).join("");
  let sel=document.getElementById('trendExercise');if(sel)sel.onchange=renderProgress;
 }
 function init(){
