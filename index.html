@@ -12,9 +12,13 @@ header{background:var(--header);color:#fff;padding:18px}main{max-width:820px;mar
 .header-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .card{background:var(--card);border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 2px 10px #0002}
 .exercise{border-top:1px solid var(--line);padding:15px 0}.exercise:first-child{border:0}
-.graph{display:flex;align-items:flex-end;gap:6px;height:120px;margin:10px 0;padding:8px;border-radius:10px;background:var(--surface)}
-.bar{flex:1;min-width:16px;background:linear-gradient(180deg,#22d3ee,#2563eb);border-radius:6px 6px 2px 2px;position:relative}
-.bar span{position:absolute;bottom:100%;left:50%;transform:translate(-50%,-3px);font-size:11px;color:var(--muted)}
+.graph{position:relative;height:170px;margin:10px 0;padding:8px;border-radius:10px;background:var(--surface);overflow:auto}
+.gridline{position:absolute;left:8px;right:8px;border-top:1px dashed var(--line);opacity:.8}
+.gridline span{position:absolute;right:0;top:-10px;font-size:10px;color:var(--muted);background:var(--surface);padding:0 3px}
+.bars{position:relative;z-index:1;display:flex;align-items:flex-end;gap:8px;height:100%;min-width:100%}
+.bar{flex:1;min-width:26px;background:linear-gradient(180deg,#22d3ee,#2563eb);border-radius:8px 8px 2px 2px;position:relative}
+.bar span{position:absolute;bottom:100%;left:50%;transform:translate(-50%,-3px);font-size:11px;color:var(--muted);white-space:nowrap}
+.bar em{position:absolute;top:calc(100% + 4px);left:50%;transform:translateX(-50%);font-style:normal;font-size:10px;color:var(--muted);white-space:nowrap}
 h1,h2,h3{margin:0 0 8px}.muted{color:var(--muted);font-size:13px}
 input,select{width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--inputBorder);border-radius:9px;font:inherit;margin-top:4px;background:var(--inputBg);color:var(--text)}
 button{padding:10px 12px;border:0;border-radius:10px;background:var(--btn);color:var(--btnText);font-weight:600}
@@ -40,11 +44,11 @@ button.alt{background:var(--btnAlt);color:var(--btnAltText)}#themeToggle{width:a
 
 <section class="card"><h2>⚙️ Editable Default Settings</h2><div id="settings"></div>
 <button id="saveSettings">Save Default Settings</button>
-<p class="muted">Defaults are separate from workout history. Rep defaults start at 4 for all rep exercises.</p></section>
+<p class="muted">Defaults are separate from workout history. Rep defaults start at 4, then adapt by +1 every 3 completed sessions and -1 every 2 skipped sessions (per day/exercise).</p></section>
 
 <section class="card"><h2>Progress</h2><div id="stats" class="stats"></div><div id="progress"></div></section>
 <section class="card"><h2>History</h2><div id="history"></div></section>
-<section class="card"><h2>Data</h2><div class="row"><button id="export">Export</button><button id="import" class="alt">Import</button><button id="clear" class="alt">Clear</button></div>
+<section class="card"><h2>Data</h2><div class="row"><button id="export">Export</button><button id="import" class="alt">Import</button><button id="demoData" class="alt">Add 2 Weeks Demo</button><button id="clear" class="alt">Clear</button></div>
 <input id="file" type="file" accept="application/json" hidden><p class="muted">Results stay in this browser.</p></section>
 </main>
 
@@ -103,19 +107,24 @@ function defaults(){
 }
 function saveDefaults(d){localStorage.setItem(SETKEY,JSON.stringify(d))}
 function adaptive(day,name,fallback){
- let a=load().filter(x=>x.day===day).sort((a,b)=>b.date.localeCompare(a.date));
- let e=a[0]?.exercises?.[name];if(!e)return fallback;
- if(e.kind==="reps"){
-   let vals=e.sets.filter(x=>x.done).map(x=>x.reps);
-   if(!vals.length)return fallback;
-   let prev=Math.min(...vals),targetMin=e.target?.[0]??fallback;
-   return prev<targetMin?Math.max(1,prev-1):prev;
+ let a=load().filter(x=>x.day===day).sort((x,y)=>x.date.localeCompare(y.date));
+ let list=a.map(x=>x.exercises?.[name]).filter(Boolean);if(!list.length)return fallback;
+ let latest=list[list.length-1];
+ if(latest.kind==="reps"){
+   let done=0,skip=0;
+   list.forEach(e=>e.sets.every(s=>s.done)?done++:skip++);
+   return Math.max(1,fallback+Math.floor(done/3)-Math.floor(skip/2));
  }
- return e.completed??fallback;
+ return latest.completed??fallback;
+}
+function adaptationInfo(day,name){
+ let list=load().filter(x=>x.day===day).sort((x,y)=>x.date.localeCompare(y.date)).map(x=>x.exercises?.[name]).filter(e=>e?.kind==="reps");
+ let done=0,skip=0;list.forEach(e=>e.sets.every(s=>s.done)?done++:skip++);
+ return {done,skip,up:Math.floor(done/3),down:Math.floor(skip/2),net:Math.floor(done/3)-Math.floor(skip/2)};
 }
 function renderSettings(){
  let day=+document.getElementById('dayPick').value,d=defaults(),out="";
- PROGRAM[day].items.forEach((it,i)=>out+=`<label>${it[0]} default (${it[1]==="reps"?"reps":"sec"})<input id="s${i}" type="number" min="1" value="${d[day+"|"+it[0]]}"></label>`);
+ PROGRAM[day].items.forEach((it,i)=>{let info=it[1]==="reps"?adaptationInfo(day,it[0]):null;out+=`<label>${it[0]} default (${it[1]==="reps"?"reps":"sec"})<input id="s${i}" type="number" min="1" value="${d[day+"|"+it[0]]}"></label>${info?`<div class="muted">Adaptation: done ${info.done} (+${info.up}) · skipped ${info.skip} (-${info.down}) · net ${info.net>=0?"+":""}${info.net}</div>`:""}`});
  out+=`<label>Round rest (sec)<input id="roundRest" type="number" min="1" value="${d[day+"|roundRest"]}"></label>
  <label>Transition (sec)<input id="transition" type="number" min="1" value="${d.transition}"></label>
  <label>Active recovery / skipping (sec)<input id="activeRecovery" type="number" min="1" value="${d.activeRecovery}"></label>`;
@@ -159,7 +168,26 @@ function saveWorkout(){
      data.exercises[name]={kind:"reps",sets,target:[it[2],it[3]]};
    }else data.exercises[name]={kind:"time",completed:+document.getElementById("completed"+i).value||0,done:document.getElementById("doneTime"+i).checked,target:it[3]};
  });
- let a=load().filter(x=>!(x.date===date&&x.day===day));a.push(data);store(a);document.getElementById('msg').innerHTML='<div class="ok">✓ Saved. Your completed sets will influence future defaults.</div>';renderHistory();renderStats();renderProgress();
+ let a=load().filter(x=>!(x.date===date&&x.day===day));a.push(data);store(a);document.getElementById('msg').innerHTML='<div class="ok">✓ Saved. Defaults adapt by +1 per 3 completed and -1 per 2 skipped sessions.</div>';renderHistory();renderStats();renderProgress();
+}
+function addDemoData(){
+ let now=new Date(),a=load();
+ for(let i=13;i>=0;i--){
+   let d=new Date(now);d.setDate(now.getDate()-i);let date=d.toISOString().slice(0,10),day=d.getDay()||7,p=PROGRAM[day],exercises={};
+   p.items.forEach((it,idx)=>{let name=it[0];
+     if(it[1]==="reps"){
+       let rounds=p.rounds||1,base=Math.max(1,it[2]-1+((i+idx)%4));
+       let sets=Array.from({length:rounds},(_,r)=>({reps:base+((r+i)%2),done:((i+r+idx)%5)!==0}));
+       exercises[name]={kind:"reps",sets,target:[it[2],it[3]]};
+     }else{
+       let target=it[3],done=((i+idx)%4)!==0,completed=done?target:Math.max(0,target-5*((i+idx)%4));
+       exercises[name]={kind:"time",completed,done,target};
+     }
+   });
+   let rec={date,day,completedAt:new Date(d.getTime()+18*3600*1000).toISOString(),exercises,demo:true};
+   a=a.filter(x=>!(x.date===date&&x.day===day));a.push(rec);
+ }
+ store(a);document.getElementById('msg').innerHTML='<div class="ok">✓ Added 2 weeks of demo data. Switch day to view/edit day-based defaults and progress.</div>';render();renderSettings();renderHistory();renderStats();renderProgress();
 }
 function renderHistory(){let a=load().sort((x,y)=>y.date.localeCompare(x.date));document.getElementById('history').innerHTML=a.length?a.map(x=>`<div class="history"><b>${x.date} — Day ${x.day}</b><br>${Object.entries(x.exercises).map(([n,e])=>e.kind==="reps"?`${n}: ${e.sets.map(s=>s.reps+(s.done?" ✓":"")).join(" / ")}`:`${n}: ${fmt(e.completed)}${e.done?" ✓":""}`).join("<br>")}</div>`).join(""):"<span class='muted'>No saved workouts.</span>"}
 function renderStats(){let a=load(),sets=a.reduce((z,x)=>z+Object.values(x.exercises).reduce((q,e)=>q+(e.kind==="reps"?e.sets.length:0),0),0);document.getElementById('stats').innerHTML=`<div class="stat"><b>${a.length}</b>sessions</div><div class="stat"><b>${sets}</b>sets tracked</div><div class="stat"><b>${new Set(a.map(x=>x.day)).size}</b>days used</div>`}
@@ -167,10 +195,10 @@ function renderProgress(){
  let day=+document.getElementById('dayPick').value,a=load().filter(x=>x.day===day).sort((x,y)=>x.date.localeCompare(y.date));
  if(!a.length){document.getElementById('progress').innerHTML="<p class='muted'>Complete workouts to build progress.</p>";return}
  let totals=a.reduce((z,x)=>{Object.values(x.exercises).forEach(e=>{if(e.kind==="reps"){let done=e.sets.filter(s=>s.done);z.done+=done.length;z.total+=e.sets.length}else{z.done+=(e.done?1:0);z.total+=1}});return z},{done:0,total:0});
- let points=a.map(x=>{let done=0,total=0;Object.values(x.exercises).forEach(e=>{if(e.kind==="reps"){done+=e.sets.filter(s=>s.done).length;total+=e.sets.length}else{done+=(e.done?1:0);total+=1}});return {date:x.date,pct:total?Math.round(done*100/total):0}});
- let bars=points.map(p=>`<div class="bar" style="height:${Math.max(6,p.pct)}%" title="${p.date}: ${p.pct}%"><span>${p.pct}%</span></div>`).join("");
- let pct=totals.total?Math.round(totals.done*100/totals.total):0,last=a[a.length-1];
- document.getElementById('progress').innerHTML=`<div class="ok"><b>Day ${day} progress:</b> ${totals.done}/${totals.total} items done (${pct}%) across ${a.length} session${a.length>1?"s":""}. Latest: ${last.date}</div><div class="graph">${bars}</div><div class="muted">Graph shows completion % per saved session (oldest to latest).</div>`+a.map(x=>`<p><b>${x.date}</b><br>${Object.entries(x.exercises).map(([n,e])=>e.kind==="reps"?`${n}: ${e.sets.map(s=>s.reps+(s.done?"✓":"")).join(" / ")}`:`${n}: ${fmt(e.completed)}${e.done?" ✓":""}`).join(" · ")}</p>`).join("");
+ let points=a.map(x=>{let done=0,total=0;Object.values(x.exercises).forEach(e=>{if(e.kind==="reps"){done+=e.sets.filter(s=>s.done).length;total+=e.sets.length}else{done+=(e.done?1:0);total+=1}});return {date:x.date,label:x.date.slice(5).replace("-","/"),pct:total?Math.round(done*100/total):0}});
+ let bars=points.map(p=>`<div class="bar" style="height:${Math.max(6,p.pct)}%" title="${p.date}: ${p.pct}%"><span>${p.pct}%</span><em>${p.label}</em></div>`).join("");
+ let pct=totals.total?Math.round(totals.done*100/totals.total):0,last=a[a.length-1],first=a[0];
+ document.getElementById('progress').innerHTML=`<div class="ok"><b>Day ${day} progress:</b> ${totals.done}/${totals.total} items done (${pct}%) across ${a.length} session${a.length>1?"s":""}. Latest: ${last.date}</div><div class="graph"><div class="gridline" style="bottom:25%"><span>25%</span></div><div class="gridline" style="bottom:50%"><span>50%</span></div><div class="gridline" style="bottom:75%"><span>75%</span></div><div class="gridline" style="bottom:100%"><span>100%</span></div><div class="bars">${bars}</div></div><div class="muted">Trend window: ${first.date} → ${last.date}. Bars show completion % per saved session.</div>`+a.map(x=>`<p><b>${x.date}</b><br>${Object.entries(x.exercises).map(([n,e])=>e.kind==="reps"?`${n}: ${e.sets.map(s=>s.reps+(s.done?"✓":"")).join(" / ")}`:`${n}: ${fmt(e.completed)}${e.done?" ✓":""}`).join(" · ")}</p>`).join("");
 }
 function init(){
  applyTheme(localStorage.getItem(THEMEKEY)||"night");
@@ -181,6 +209,7 @@ function init(){
  document.getElementById('dayPick').onchange=()=>{render();renderSettings();renderProgress()};document.getElementById('saveSettings').onclick=saveDefaultSettings;document.getElementById('save').onclick=saveWorkout;
  document.getElementById('export').onclick=async()=>{let now=new Date(),dd=String(now.getDate()).padStart(2,"0"),mm=String(now.getMonth()+1).padStart(2,"0"),yyyy=now.getFullYear(),day=+document.getElementById('dayPick').value,filename=`Workout_Day${day}_${dd}_${mm}_${yyyy}.json`,payload=JSON.stringify({workouts:load(),defaults:defaults()},null,2),msg=document.getElementById('msg');if(window.showSaveFilePicker){try{let h=await window.showSaveFilePicker({suggestedName:filename,types:[{description:"JSON",accept:{"application/json":[".json"]}}]}),w=await h.createWritable();await w.write(payload);await w.close();if(msg)msg.innerHTML='<div class="ok">✓ Exported using save picker.</div>';return}catch(e){if(e?.name==="AbortError")return}}let b=new Blob([payload],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);if(msg)msg.innerHTML='<div class="muted">Save picker not supported here. File downloaded using browser fallback.</div>'};
  document.getElementById('import').onclick=()=>document.getElementById('file').click();document.getElementById('file').onchange=async e=>{try{let f=e.target.files?.[0];if(!f)return;let x=JSON.parse(await f.text());if(Array.isArray(x)){store(x)}else{store(x.workouts||[]);if(x.defaults)localStorage.setItem(SETKEY,JSON.stringify(x.defaults))}alert("Imported");location.reload()}catch{alert("Invalid backup")}};
+ document.getElementById('demoData').onclick=()=>{if(confirm("Add 2 weeks of demo data for graph testing?"))addDemoData()};
  document.getElementById('clear').onclick=()=>{if(confirm("Delete all workout history and settings?")){localStorage.removeItem(DATAKEY);localStorage.removeItem(SETKEY);location.reload()}};
  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{})}
  render();renderSettings();renderHistory();renderStats();renderProgress();
