@@ -5,25 +5,29 @@
 <meta name="theme-color" content="#111827"><link rel="manifest" href="manifest.json">
 <title>Greek God Upright Circuit v7</title>
 <style>
-body{margin:0;background:#f3f4f6;color:#111827;font-family:system-ui,sans-serif}
-header{background:#111827;color:#fff;padding:18px}main{max-width:820px;margin:auto;padding:14px}
-.card{background:#fff;border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 2px 10px #0001}
-.exercise{border-top:1px solid #eee;padding:15px 0}.exercise:first-child{border:0}
-h1,h2,h3{margin:0 0 8px}.muted{color:#6b7280;font-size:13px}
-input,select{width:100%;box-sizing:border-box;padding:9px;border:1px solid #d1d5db;border-radius:9px;font:inherit;margin-top:4px}
-button{padding:10px 12px;border:0;border-radius:10px;background:#111827;color:#fff;font-weight:600}
-button.alt{background:#e5e7eb;color:#111827}.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}.row button{flex:1}
+:root{--bg:#0b1220;--text:#e5e7eb;--header:#020617;--card:#111827;--line:#1f2937;--muted:#94a3b8;--inputBg:#0f172a;--inputBorder:#334155;--btn:#2563eb;--btnText:#fff;--btnAlt:#1f2937;--btnAltText:#e5e7eb;--surface:#0f172a;--okBg:#052e1a;--okText:#86efac}
+body.day{--bg:#f3f4f6;--text:#111827;--header:#111827;--card:#fff;--line:#eee;--muted:#6b7280;--inputBg:#fff;--inputBorder:#d1d5db;--btn:#111827;--btnText:#fff;--btnAlt:#e5e7eb;--btnAltText:#111827;--surface:#f8fafc;--okBg:#ecfdf5;--okText:#166534}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,sans-serif}
+header{background:var(--header);color:#fff;padding:18px}main{max-width:820px;margin:auto;padding:14px}
+.header-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.card{background:var(--card);border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 2px 10px #0002}
+.exercise{border-top:1px solid var(--line);padding:15px 0}.exercise:first-child{border:0}
+h1,h2,h3{margin:0 0 8px}.muted{color:var(--muted);font-size:13px}
+input,select{width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--inputBorder);border-radius:9px;font:inherit;margin-top:4px;background:var(--inputBg);color:var(--text)}
+button{padding:10px 12px;border:0;border-radius:10px;background:var(--btn);color:var(--btnText);font-weight:600}
+button.alt{background:var(--btnAlt);color:var(--btnAltText)}#themeToggle{width:auto;padding:8px 10px;font-size:14px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}.row button{flex:1}
 .timer{text-align:center;font-size:42px;font-variant-numeric:tabular-nums;padding:7px}
-.timerbox{background:#f8fafc;border-radius:12px;padding:10px;margin-top:9px}
+.timerbox{background:var(--surface);border-radius:12px;padding:10px;margin-top:9px}
 .setrow{display:grid;grid-template-columns:1fr 100px 80px;gap:8px;align-items:end;margin:7px 0}
-.ok{background:#ecfdf5;color:#166534;padding:11px;border-radius:10px;margin-top:10px}
-.history{border-top:1px solid #eee;padding:12px 0}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.stat{text-align:center;background:#f8fafc;padding:10px;border-radius:10px}.stat b{display:block;font-size:20px}
-.tempo{background:#f8fafc;padding:9px;border-radius:9px;margin:7px 0}
+.ok{background:var(--okBg);color:var(--okText);padding:11px;border-radius:10px;margin-top:10px}
+.history{border-top:1px solid var(--line);padding:12px 0}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{text-align:center;background:var(--surface);padding:10px;border-radius:10px}.stat b{display:block;font-size:20px}
+.tempo{background:var(--surface);padding:9px;border-radius:9px;margin:7px 0}
 @media(max-width:520px){.setrow{grid-template-columns:1fr 80px 70px}}
 </style></head>
 <body>
-<header><h1>Greek God Upright Circuit</h1><div id="date"></div></header>
+<header><div class="header-top"><h1>Greek God Upright Circuit</h1><button id="themeToggle" class="alt" type="button">☀️ Day</button></div><div id="date"></div></header>
 <main>
 <section class="card"><h2 id="dayTitle"></h2><div id="dayMeta" class="muted"></div>
 <select id="dayPick" style="margin-top:10px"></select></section>
@@ -80,10 +84,12 @@ const PROGRAM={
 ["Hydration & Sleep","time",0,0,"Recovery focus","Hydration and sleep"]]}
 };
 
-const DATAKEY="greekGodWorkoutV7",SETKEY="greekGodDefaultsV7";let timers={};
+const DATAKEY="greekGodWorkoutV7",SETKEY="greekGodDefaultsV7",THEMEKEY="greekGodThemeV1";let timers={};
 function load(){try{return JSON.parse(localStorage.getItem(DATAKEY)||"[]")}catch{return[]}}
 function store(x){localStorage.setItem(DATAKEY,JSON.stringify(x))}
 function fmt(s){s=Math.max(0,Math.round(s));return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")}
+function applyTheme(mode){document.body.classList.toggle("day",mode==="day");let b=document.getElementById("themeToggle");if(b)b.textContent=mode==="day"?"🌙 Night":"☀️ Day";let m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",mode==="day"?"#111827":"#020617")}
+function toggleTheme(){let next=document.body.classList.contains("day")?"night":"day";localStorage.setItem(THEMEKEY,next);applyTheme(next)}
 function defaults(){
  let d={};try{d=JSON.parse(localStorage.getItem(SETKEY)||"{}")}catch{}
  for(let day=1;day<=7;day++)for(let it of PROGRAM[day].items){
@@ -96,7 +102,12 @@ function saveDefaults(d){localStorage.setItem(SETKEY,JSON.stringify(d))}
 function adaptive(day,name,fallback){
  let a=load().filter(x=>x.day===day).sort((a,b)=>b.date.localeCompare(a.date));
  let e=a[0]?.exercises?.[name];if(!e)return fallback;
- if(e.kind==="reps"){let vals=e.sets.filter(x=>x.done);return vals.length?Math.max(1,Math.min(...vals.map(x=>x.reps))):fallback}
+ if(e.kind==="reps"){
+   let vals=e.sets.filter(x=>x.done).map(x=>x.reps);
+   if(!vals.length)return fallback;
+   let prev=Math.min(...vals),targetMin=e.target?.[0]??fallback;
+   return prev<targetMin?Math.max(1,prev-1):prev;
+ }
  return e.completed??fallback;
 }
 function renderSettings(){
@@ -134,7 +145,7 @@ function render(){
  out+=`<div class="muted"><b>Transition:</b> ${d.transition}s · <b>Active recovery:</b> ${d.activeRecovery}s</div>`;
  document.getElementById('workout').innerHTML=out;
 }
-function startTimer(i){clearInterval(timers[i]);let el=document.getElementById("timer"+i),cur=+document.getElementById("completed"+i).value||0,end=Date.now()+cur*1000;timers[i]=setInterval(()=>{let x=Math.max(0,Math.ceil((end-Date.now())/1000));el.textContent=fmt(x);if(!x)clearInterval(timers[i])},250)}
+function startTimer(i){clearInterval(timers[i]);let el=document.getElementById("timer"+i),input=document.getElementById("completed"+i),cur=+input.value||0,end=Date.now()+cur*1000;timers[i]=setInterval(()=>{let x=Math.max(0,Math.ceil((end-Date.now())/1000));el.textContent=fmt(x);input.value=x;if(!x)clearInterval(timers[i])},250)}
 function pauseTimer(i){clearInterval(timers[i])}
 function resetTimer(i,s){clearInterval(timers[i]);document.getElementById("timer"+i).textContent=fmt(s);document.getElementById("completed"+i).value=s}
 function saveWorkout(){
@@ -149,15 +160,24 @@ function saveWorkout(){
 }
 function renderHistory(){let a=load().sort((x,y)=>y.date.localeCompare(x.date));document.getElementById('history').innerHTML=a.length?a.map(x=>`<div class="history"><b>${x.date} — Day ${x.day}</b><br>${Object.entries(x.exercises).map(([n,e])=>e.kind==="reps"?`${n}: ${e.sets.map(s=>s.reps+(s.done?" ✓":"")).join(" / ")}`:`${n}: ${fmt(e.completed)}${e.done?" ✓":""}`).join("<br>")}</div>`).join(""):"<span class='muted'>No saved workouts.</span>"}
 function renderStats(){let a=load(),sets=a.reduce((z,x)=>z+Object.values(x.exercises).reduce((q,e)=>q+(e.kind==="reps"?e.sets.length:0),0),0);document.getElementById('stats').innerHTML=`<div class="stat"><b>${a.length}</b>sessions</div><div class="stat"><b>${sets}</b>sets tracked</div><div class="stat"><b>${new Set(a.map(x=>x.day)).size}</b>days used</div>`}
-function renderProgress(){let day=+document.getElementById('dayPick').value,a=load().filter(x=>x.day===day).sort((x,y)=>x.date.localeCompare(y.date));document.getElementById('progress').innerHTML=a.length?a.map(x=>`<p><b>${x.date}</b><br>${Object.entries(x.exercises).map(([n,e])=>e.kind==="reps"?`${n}: ${e.sets.map(s=>s.reps+(s.done?"✓":"")).join(" / ")}`:`${n}: ${fmt(e.completed)}${e.done?" ✓":""}`).join(" · ")}</p>`).join(""):"<p class='muted'>Complete workouts to build progress.</p>"}
+function renderProgress(){
+ let day=+document.getElementById('dayPick').value,a=load().filter(x=>x.day===day).sort((x,y)=>x.date.localeCompare(y.date));
+ if(!a.length){document.getElementById('progress').innerHTML="<p class='muted'>Complete workouts to build progress.</p>";return}
+ let totals=a.reduce((z,x)=>{Object.values(x.exercises).forEach(e=>{if(e.kind==="reps"){let done=e.sets.filter(s=>s.done);z.done+=done.length;z.total+=e.sets.length}else{z.done+=(e.done?1:0);z.total+=1}});return z},{done:0,total:0});
+ let pct=totals.total?Math.round(totals.done*100/totals.total):0,last=a[a.length-1];
+ document.getElementById('progress').innerHTML=`<div class="ok"><b>Day ${day} progress:</b> ${totals.done}/${totals.total} items done (${pct}%) across ${a.length} session${a.length>1?"s":""}. Latest: ${last.date}</div>`+a.map(x=>`<p><b>${x.date}</b><br>${Object.entries(x.exercises).map(([n,e])=>e.kind==="reps"?`${n}: ${e.sets.map(s=>s.reps+(s.done?"✓":"")).join(" / ")}`:`${n}: ${fmt(e.completed)}${e.done?" ✓":""}`).join(" · ")}</p>`).join("");
+}
 function init(){
+ applyTheme(localStorage.getItem(THEMEKEY)||"night");
+ document.getElementById('themeToggle').onclick=toggleTheme;
  document.getElementById('date').textContent=new Date().toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"long",day:"numeric"});
  document.getElementById('dayPick').innerHTML=Object.entries(PROGRAM).map(([d,p])=>`<option value="${d}">Day ${d}: ${p.name}</option>`).join("");
  let dow=new Date().getDay();document.getElementById('dayPick').value=dow===0?7:dow;
  document.getElementById('dayPick').onchange=()=>{render();renderSettings();renderProgress()};document.getElementById('saveSettings').onclick=saveDefaultSettings;document.getElementById('save').onclick=saveWorkout;
- document.getElementById('export').onclick=()=>{let b=new Blob([JSON.stringify({workouts:load(),defaults:defaults()},null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="greek-god-v7-backup.json";a.click()};
- document.getElementById('import').onclick=()=>document.getElementById('file').click();document.getElementById('file').onchange=async e=>{try{let x=JSON.parse(await e.target.files[0].text());store(x.workouts||x);alert("Imported");location.reload()}catch{alert("Invalid backup")}};
+ document.getElementById('export').onclick=async()=>{let now=new Date(),dd=String(now.getDate()).padStart(2,"0"),mm=String(now.getMonth()+1).padStart(2,"0"),yyyy=now.getFullYear(),day=+document.getElementById('dayPick').value,filename=`Workout_Day${day}_${dd}_${mm}_${yyyy}.json`,payload=JSON.stringify({workouts:load(),defaults:defaults()},null,2);if(window.showSaveFilePicker){try{let h=await window.showSaveFilePicker({suggestedName:filename,types:[{description:"JSON",accept:{"application/json":[".json"]}}]}),w=await h.createWritable();await w.write(payload);await w.close();return}catch(e){if(e?.name==="AbortError")return}}let b=new Blob([payload],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000)};
+ document.getElementById('import').onclick=()=>document.getElementById('file').click();document.getElementById('file').onchange=async e=>{try{let f=e.target.files?.[0];if(!f)return;let x=JSON.parse(await f.text());if(Array.isArray(x)){store(x)}else{store(x.workouts||[]);if(x.defaults)localStorage.setItem(SETKEY,JSON.stringify(x.defaults))}alert("Imported");location.reload()}catch{alert("Invalid backup")}};
  document.getElementById('clear').onclick=()=>{if(confirm("Delete all workout history and settings?")){localStorage.removeItem(DATAKEY);localStorage.removeItem(SETKEY);location.reload()}};
+ if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{})}
  render();renderSettings();renderHistory();renderStats();renderProgress();
 }
 init();
