@@ -3,22 +3,22 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#111827"><link rel="manifest" href="manifest.json">
-<title>Workout Tracker v7</title>
+<title>Workout Tracker v8</title>
 <style>
 :root{--bg:#0b1220;--text:#e5e7eb;--header:#020617;--card:#111827;--line:#1f2937;--muted:#94a3b8;--inputBg:#0f172a;--inputBorder:#334155;--btn:#2563eb;--btnText:#fff;--btnAlt:#1f2937;--btnAltText:#e5e7eb;--surface:#0f172a;--okBg:#052e1a;--okText:#86efac;--focus:#22d3ee}
 body.day{--bg:#f3f4f6;--text:#111827;--header:#111827;--card:#fff;--line:#eee;--muted:#6b7280;--inputBg:#fff;--inputBorder:#d1d5db;--btn:#111827;--btnText:#fff;--btnAlt:#e5e7eb;--btnAltText:#111827;--surface:#f8fafc;--okBg:#ecfdf5;--okText:#166534;--focus:#0ea5e9}
 body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,sans-serif}
-header{background:var(--header);color:#fff;padding:18px}main{max-width:820px;margin:auto;padding:14px}
+header{background:var(--header);color:#fff;padding:18px}main{max-width:920px;margin:auto;padding:14px}
 .header-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .card{background:var(--card);border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 2px 10px #0002}
 .card.primary{border:1px solid #3b82f655}
 .card.secondary{opacity:.98}
 .exercise{border-top:1px solid var(--line);padding:15px 0}.exercise:first-child{border:0}
-
 h1,h2,h3{margin:0 0 8px}.muted{color:var(--muted);font-size:13px}
 input,select{width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--inputBorder);border-radius:9px;font:inherit;margin-top:4px;background:var(--inputBg);color:var(--text)}
 button{padding:10px 12px;border:0;border-radius:10px;background:var(--btn);color:var(--btnText);font-weight:600}
-button.alt{background:var(--btnAlt);color:var(--btnAltText)}#themeToggle{width:auto;padding:8px 10px;font-size:14px}
+button.alt{background:var(--btnAlt);color:var(--btnAltText)}
+#themeToggle{width:auto;padding:8px 10px;font-size:14px}
 .savebar{position:sticky;bottom:0;background:linear-gradient(180deg,#0000,var(--card) 30%);padding-top:10px;margin-top:8px}
 details>summary{cursor:pointer;font-weight:700;list-style:none}
 details>summary::-webkit-details-marker{display:none}
@@ -35,31 +35,29 @@ details>div{margin-top:10px}
 .history{border-top:1px solid var(--line);padding:12px 0}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .stat{text-align:center;background:var(--surface);padding:10px;border-radius:10px}.stat b{display:block;font-size:20px}
 .tempo{background:var(--surface);padding:9px;border-radius:9px;margin:7px 0}
-.trendbox{margin-top:10px}.trendbox select{max-width:320px}
-.filterrow{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-top:8px}
-.filterrow>label{display:block;font-size:13px;color:var(--muted)}
-.filter-day{grid-column:auto;color:var(--text);font-weight:700}
-.filter-exercise{grid-column:auto}
+.trendbox{margin-top:10px}
+.filterrow,.historyfilter{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:8px}
+.filterrow>label,.historyfilter>label{display:block;font-size:13px;color:var(--muted)}
+.filter-day,.filter-exercise{color:var(--text);font-weight:700}
 .linechart{height:190px;background:var(--surface);border-radius:10px;padding:8px;overflow-x:auto;overflow-y:hidden}
-.linechart svg{display:block}.legend{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
-.chip{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--inputBg);border:1px solid var(--inputBorder);font-size:11px;color:var(--text)}
+.linechart svg{display:block}
+.legend{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
 .swatch{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
 .editing{margin-top:8px;padding:8px;border-radius:8px;background:var(--surface);font-size:13px}
 button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
-@media(max-width:820px){
+@media(max-width:920px){
   .setrow{grid-template-columns:1fr 90px}
   .settitle{grid-column:1/-1}
   #save,#cancelEdit{width:100%}
-  .filterrow{grid-template-columns:1fr 1fr}
-  .filter-day{grid-column:1/-1}
-  .filter-exercise{grid-column:1/-1}
+  .filterrow,.historyfilter{grid-template-columns:1fr 1fr}
+  .filter-day,.filter-exercise,.historyfilter label:first-child{grid-column:1/-1}
 }
 </style></head>
 <body>
 <header><div class="header-top"><h1>Workout Tracker</h1><button id="themeToggle" class="alt" type="button">☀️ Day</button></div><div id="date"></div></header>
 <main>
 <section class="card"><h2 id="dayTitle"></h2><div id="dayMeta" class="muted"></div>
-<select id="dayPick" style="margin-top:10px"></select></section>
+<label for="dayPick" class="muted">Workout Day</label><select id="dayPick"></select></section>
 
 <section class="card primary"><h2>Today's Circuit</h2><div id="workout"></div>
 <div class="savebar"><button id="save">✓ DONE — SAVE WORKOUT</button><button id="cancelEdit" class="alt" style="margin-top:8px;display:none">Cancel Edit Mode</button></div><div id="msg" aria-live="polite"></div></section>
@@ -68,9 +66,24 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 <button id="saveSettings">Save Default Settings</button>
 <p class="muted">Defaults are separate from workout history. Rep defaults start at 4, then adapt by +1 every 3 completed sessions and -1 every 2 skipped sessions (per day/exercise).</p></div></details></section>
 
-<section class="card secondary"><h2>Progress</h2><div id="stats" class="stats"></div><div class="filterrow"><label class="filter-day">Day<select id="progressDay"></select></label><label class="filter-exercise">Graph by Exercise<select id="progressExercise"></select></label><label>From<input id="fromDate" type="date"></label><label>To<input id="toDate" type="date"></label></div><div id="progress"></div></section>
-<section class="card secondary"><details><summary>History</summary><div id="history"></div></details></section>
-<section class="card secondary"><details><summary>Data</summary><div><div class="row"><button id="export">Export</button><button id="import" class="alt">Import</button><button id="demoData" class="alt">Add 3 Weeks Demo</button><button id="clear" class="alt">Clear</button></div>
+<section class="card secondary"><h2>Progress</h2><div id="stats" class="stats"></div><div class="filterrow">
+<label class="filter-day" for="progressDay">Day<select id="progressDay"></select></label>
+<label class="filter-exercise" for="progressExercise">Graph by Exercise<select id="progressExercise"></select></label>
+<label for="progressScale">Scale<select id="progressScale"><option value="normalized">Normalized</option><option value="absolute">Absolute</option></select></label>
+<label for="fromDate">From<input id="fromDate" type="date"></label>
+<label for="toDate">To<input id="toDate" type="date"></label></div><div id="progress"></div></section>
+
+<section class="card secondary"><details><summary>History</summary><div>
+<div class="historyfilter">
+<label for="historySearch">Search<input id="historySearch" type="text" placeholder="Exercise contains..."></label>
+<label for="historyDay">Day<select id="historyDay"></select></label>
+<label for="historyFrom">From<input id="historyFrom" type="date"></label>
+<label for="historyTo">To<input id="historyTo" type="date"></label>
+<label for="historyExercise">Exercise<select id="historyExercise"></select></label>
+</div>
+<div id="history"></div></div></details></section>
+
+<section class="card secondary"><details><summary>Data</summary><div><div class="row"><button id="export">Export</button><button id="import" class="alt">Import</button><button id="demoData" class="alt">Add 3 Weeks Demo</button><button id="smoke" class="alt">Run Smoke Test</button><button id="clear" class="alt">Clear</button></div>
 <input id="file" type="file" accept="application/json" hidden><p class="muted">Results stay in this browser.</p></div></details></section>
 </main>
 
@@ -113,167 +126,272 @@ const PROGRAM={
 ["Hydration & Sleep","time",0,0,"Recovery focus","Hydration and sleep"]]}
 };
 
-const DATAKEY="Workout Tracker",SETKEY="Workout Tracker Defaults",THEMEKEY="Workout Tracker Theme";let timers={};
-function load(){try{return JSON.parse(localStorage.getItem(DATAKEY)||"[]")}catch{return[]}}
-function store(x){localStorage.setItem(DATAKEY,JSON.stringify(x))}
+const DATAKEY="Workout Tracker",SETKEY="Workout Tracker Defaults",THEMEKEY="Workout Tracker Theme";
+const SCHEMA=2;
+let timers={},workoutsCache=null;
+
+function localISO(d=new Date()){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");return `${y}-${m}-${day}`}
 function fmt(s){s=Math.max(0,Math.round(s));return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")}
-function applyTheme(mode){document.body.classList.toggle("day",mode==="day");let b=document.getElementById("themeToggle");if(b)b.textContent=mode==="day"?"🌙 Night":"☀️ Day";let m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",mode==="day"?"#111827":"#020617")}
-function toggleTheme(){let next=document.body.classList.contains("day")?"night":"day";localStorage.setItem(THEMEKEY,next);applyTheme(next)}
-function defaults(){
- let d={};try{d=JSON.parse(localStorage.getItem(SETKEY)||"{}")}catch{}
- for(let day=1;day<=7;day++)for(let it of PROGRAM[day].items){
-   let k=day+"|"+it[0];if(!(k in d))d[k]=it[1]==="reps"?4:it[2];
- }
- for(let day=1;day<=7;day++)d[day+"|roundRest"]??=PROGRAM[day].rest;
- d.transition??=15;d.activeRecovery??=45;return d;
+function byDate(a,b){return a.date.localeCompare(b.date)}
+function uid(p){return `${p}-${Math.random().toString(36).slice(2,9)}`}
+
+function readJson(key,fallback){try{return JSON.parse(localStorage.getItem(key)||JSON.stringify(fallback))}catch{return fallback}}
+function migrateWorkouts(raw){
+  if(Array.isArray(raw)) return {schema:SCHEMA,workouts:raw};
+  if(raw&&Array.isArray(raw.workouts)) return {schema:SCHEMA,workouts:raw.workouts};
+  return {schema:SCHEMA,workouts:[]};
 }
-function saveDefaults(d){localStorage.setItem(SETKEY,JSON.stringify(d))}
+function load(force=false){
+  if(workoutsCache&&!force)return workoutsCache;
+  const migrated=migrateWorkouts(readJson(DATAKEY,[]));
+  localStorage.setItem(DATAKEY,JSON.stringify(migrated));
+  workoutsCache=migrated.workouts;
+  return workoutsCache;
+}
+function store(workouts){
+  workoutsCache=workouts;
+  localStorage.setItem(DATAKEY,JSON.stringify({schema:SCHEMA,workouts}));
+}
+
+function defaults(){
+  let d=readJson(SETKEY,{});
+  if(d&&d.schema!==SCHEMA)d={...d,schema:SCHEMA};
+  for(let day=1;day<=7;day++)for(const it of PROGRAM[day].items){const k=day+"|"+it[0];if(!(k in d))d[k]=it[1]==="reps"?4:it[2]}
+  for(let day=1;day<=7;day++)d[day+"|roundRest"]??=PROGRAM[day].rest;
+  d.transition??=15;d.activeRecovery??=45;d.autoDoneTimer??=false;d.schema=SCHEMA;
+  return d;
+}
+function saveDefaults(d){localStorage.setItem(SETKEY,JSON.stringify({...d,schema:SCHEMA}))}
+function applyTheme(mode){document.body.classList.toggle("day",mode==="day");const b=document.getElementById("themeToggle");if(b)b.textContent=mode==="day"?"🌙 Night":"☀️ Day";const m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",mode==="day"?"#111827":"#020617")}
+function toggleTheme(){const next=document.body.classList.contains("day")?"night":"day";localStorage.setItem(THEMEKEY,next);applyTheme(next)}
+
 function adaptive(day,name,fallback){
- let a=load().filter(x=>x.day===day).sort((x,y)=>x.date.localeCompare(y.date));
- let list=a.map(x=>x.exercises?.[name]).filter(Boolean);if(!list.length)return fallback;
- let latest=list[list.length-1];
- if(latest.kind==="reps"){
-   let done=0,skip=0;
-   list.forEach(e=>e.sets.every(s=>s.done)?done++:skip++);
-   return Math.max(1,fallback+Math.floor(done/3)-Math.floor(skip/2));
- }
- return latest.completed??fallback;
+  const list=load().filter(x=>x.day===day).sort(byDate).map(x=>x.exercises?.[name]).filter(Boolean);
+  if(!list.length)return fallback;
+  const latest=list[list.length-1];
+  if(latest.kind==="reps"){
+    let done=0,skip=0;list.forEach(e=>e.sets.every(s=>s.done)?done++:skip++);
+    return Math.max(1,fallback+Math.floor(done/3)-Math.floor(skip/2));
+  }
+  return latest.completed??fallback;
 }
 function adaptationInfo(day,name){
- let list=load().filter(x=>x.day===day).sort((x,y)=>x.date.localeCompare(y.date)).map(x=>x.exercises?.[name]).filter(e=>e?.kind==="reps");
- let done=0,skip=0;list.forEach(e=>e.sets.every(s=>s.done)?done++:skip++);
- return {done,skip,up:Math.floor(done/3),down:Math.floor(skip/2),net:Math.floor(done/3)-Math.floor(skip/2)};
+  const list=load().filter(x=>x.day===day).sort(byDate).map(x=>x.exercises?.[name]).filter(e=>e?.kind==="reps");
+  let done=0,skip=0;list.forEach(e=>e.sets.every(s=>s.done)?done++:skip++);
+  return {done,skip,up:Math.floor(done/3),down:Math.floor(skip/2),net:Math.floor(done/3)-Math.floor(skip/2)};
 }
+
 function renderSettings(){
- let day=+document.getElementById('dayPick').value,d=defaults(),out="";
- PROGRAM[day].items.forEach((it,i)=>{let info=it[1]==="reps"?adaptationInfo(day,it[0]):null;out+=`<label>${it[0]} default (${it[1]==="reps"?"reps":"sec"})<input id="s${i}" type="number" min="1" value="${d[day+"|"+it[0]]}"></label>${info?`<div class="muted">Adaptation: done ${info.done} (+${info.up}) · skipped ${info.skip} (-${info.down}) · net ${info.net>=0?"+":""}${info.net}</div>`:""}`});
- out+=`<label>Round rest (sec)<input id="roundRest" type="number" min="1" value="${d[day+"|roundRest"]}"></label>
- <label>Transition (sec)<input id="transition" type="number" min="1" value="${d.transition}"></label>
- <label>Active recovery / skipping (sec)<input id="activeRecovery" type="number" min="1" value="${d.activeRecovery}"></label>`;
- document.getElementById('settings').innerHTML=out;
+  const day=+document.getElementById('dayPick').value,d=defaults();let out="";
+  PROGRAM[day].items.forEach((it,i)=>{const info=it[1]==="reps"?adaptationInfo(day,it[0]):null;out+=`<label for="s${i}">${it[0]} default (${it[1]==="reps"?"reps":"sec"})</label><input id="s${i}" type="number" min="1" value="${d[day+"|"+it[0]]}">${info?`<div class="muted">Adaptation: done ${info.done} (+${info.up}) · skipped ${info.skip} (-${info.down}) · net ${info.net>=0?"+":""}${info.net}</div>`:""}`});
+  out+=`<label for="roundRest">Round rest (sec)</label><input id="roundRest" type="number" min="1" value="${d[day+"|roundRest"]}">
+  <label for="transition">Transition (sec)</label><input id="transition" type="number" min="1" value="${d.transition}">
+  <label for="activeRecovery">Active recovery / skipping (sec)</label><input id="activeRecovery" type="number" min="1" value="${d.activeRecovery}">
+  <label for="autoDoneTimer">Auto-check Done when timer reaches 00:00</label><input id="autoDoneTimer" type="checkbox" ${d.autoDoneTimer?"checked":""}>`;
+  document.getElementById('settings').innerHTML=out;
 }
 function saveDefaultSettings(){
- let day=+document.getElementById('dayPick').value,d=defaults();
- PROGRAM[day].items.forEach((it,i)=>d[day+"|"+it[0]]=Math.max(1,+document.getElementById("s"+i).value||1));
- d[day+"|roundRest"]=Math.max(1,+roundRest.value||1);d.transition=Math.max(1,+transition.value||1);d.activeRecovery=Math.max(1,+activeRecovery.value||1);
- saveDefaults(d);render();renderSettings();document.getElementById('msg').innerHTML='<div class="ok">✓ Default settings saved.</div>';
+  const day=+document.getElementById('dayPick').value,d=defaults();
+  PROGRAM[day].items.forEach((it,i)=>d[day+"|"+it[0]]=Math.max(1,+document.getElementById("s"+i).value||1));
+  d[day+"|roundRest"]=Math.max(1,+document.getElementById("roundRest").value||1);
+  d.transition=Math.max(1,+document.getElementById("transition").value||1);
+  d.activeRecovery=Math.max(1,+document.getElementById("activeRecovery").value||1);
+  d.autoDoneTimer=!!document.getElementById("autoDoneTimer").checked;
+  saveDefaults(d);render();renderSettings();document.getElementById('msg').innerHTML='<div class="ok">✓ Default settings saved.</div>';
 }
+
 function render(){
- let day=+document.getElementById('dayPick').value,p=PROGRAM[day],d=defaults(),date=new Date().toISOString().slice(0,10),saved=load().find(x=>x.date===date&&x.day===day);
- document.getElementById('dayTitle').textContent=`Day ${day}: ${p.name}`;document.getElementById('dayMeta').textContent=p.rounds?`${p.rounds} rounds · Round rest ${d[day+"|roundRest"]} sec`:"Complete reset";
- let out="";
- p.items.forEach((it,i)=>{
-   let name=it[0],def=d[day+"|"+name],ad=adaptive(day,name,def);
-   if(it[1]==="reps"){
-     let rows=saved?.exercises?.[name]?.sets||Array.from({length:p.rounds||1},()=>({reps:ad,done:false}));
-     out+=`<div class="exercise"><h3>${name}</h3><div class="muted">Program: ${it[2]}–${it[3]} reps</div><div class="tempo"><b>Tempo:</b> ${it[4]}</div><div class="muted">${it[5]}</div>`;
-     for(let r=0;r<(p.rounds||1);r++){let x=rows[r]||{reps:ad,done:false};out+=`<div class="setrow"><div class="settitle"><b>Set ${r+1}</b></div><label class="setreps">Reps<input data-name="${encodeURIComponent(name)}" data-r="${r}" type="number" min="0" value="${x.reps}"></label><label class="setdone">Done<br><input data-done="${encodeURIComponent(name)}" data-r="${r}" type="checkbox" ${x.done?"checked":""}></label></div>`}
-     out+=`</div>`;
-   }else{
-     let cur=saved?.exercises?.[name]?.completed??ad;
-     out+=`<div class="exercise"><h3>${name}</h3><div class="tempo"><b>Tempo:</b> ${it[4]}</div><div class="muted">${it[5]} · Default ${fmt(def)}</div>
-     <div class="timerbox"><div class="timer" id="timer${i}">${fmt(cur)}</div><div class="row"><button onclick="startTimer(${i})">▶ Start</button><button class="alt" onclick="pauseTimer(${i})">⏸ Pause</button><button class="alt" onclick="resetTimer(${i},${def})">↻ Reset</button></div>
-     <label>Remaining seconds<input id="completed${i}" type="number" min="0" value="${cur}"></label><label>Done<br><input id="doneTime${i}" type="checkbox" ${saved?.exercises?.[name]?.done?"checked":""}></label></div></div>`;
-   }
- });
- out+=`<div class="muted"><b>Transition:</b> ${d.transition}s · <b>Active recovery:</b> ${d.activeRecovery}s</div>`;
- document.getElementById('workout').innerHTML=out;
+  const day=+document.getElementById('dayPick').value,p=PROGRAM[day],d=defaults(),date=localISO(),saved=load().find(x=>x.date===date&&x.day===day);
+  document.getElementById('dayTitle').textContent=`Day ${day}: ${p.name}`;
+  document.getElementById('dayMeta').textContent=p.rounds?`${p.rounds} rounds · Round rest ${d[day+"|roundRest"]} sec`:"Complete reset";
+  let out="";
+  p.items.forEach((it,i)=>{
+    const name=it[0],def=d[day+"|"+name],ad=adaptive(day,name,def);
+    if(it[1]==="reps"){
+      const rows=saved?.exercises?.[name]?.sets||Array.from({length:p.rounds||1},()=>({reps:ad,done:false}));
+      out+=`<div class="exercise"><h3>${name}</h3><div class="muted">Program: ${it[2]}–${it[3]} reps</div><div class="tempo"><b>Tempo:</b> ${it[4]}</div><div class="muted">${it[5]}</div>`;
+      for(let r=0;r<(p.rounds||1);r++){
+        const x=rows[r]||{reps:ad,done:false};
+        const repId=uid(`rep-${i}-${r}`),doneId=uid(`done-${i}-${r}`);
+        out+=`<div class="setrow"><div class="settitle"><b>Set ${r+1}</b></div><label class="setreps" for="${repId}">Reps</label><input id="${repId}" data-name="${encodeURIComponent(name)}" data-r="${r}" type="number" min="0" value="${x.reps}"><label class="setdone" for="${doneId}">Done</label><input id="${doneId}" data-done="${encodeURIComponent(name)}" data-r="${r}" type="checkbox" ${x.done?"checked":""}></div>`;
+      }
+      out+=`</div>`;
+    }else{
+      const cur=saved?.exercises?.[name]?.completed??ad;
+      out+=`<div class="exercise"><h3>${name}</h3><div class="tempo"><b>Tempo:</b> ${it[4]}</div><div class="muted">${it[5]} · Default ${fmt(def)}</div>
+      <div class="timerbox"><div class="timer" id="timer${i}">${fmt(cur)}</div><div class="row"><button onclick="startTimer(${i})">▶ Start</button><button class="alt" onclick="pauseTimer(${i})">⏸ Pause</button><button class="alt" onclick="adjustTimer(${i},-10)">-10s</button><button class="alt" onclick="adjustTimer(${i},10)">+10s</button><button class="alt" onclick="resetTimer(${i},${def})">↻ Reset</button></div>
+      <label for="completed${i}">Remaining seconds</label><input id="completed${i}" type="number" min="0" value="${cur}"><label for="doneTime${i}">Done</label><input id="doneTime${i}" type="checkbox" ${saved?.exercises?.[name]?.done?"checked":""}></div></div>`;
+    }
+  });
+  out+=`<div class="muted"><b>Transition:</b> ${d.transition}s · <b>Active recovery:</b> ${d.activeRecovery}s</div>`;
+  document.getElementById('workout').innerHTML=out;
 }
-function startTimer(i){clearInterval(timers[i]);let el=document.getElementById("timer"+i),input=document.getElementById("completed"+i),cur=+input.value||0,end=Date.now()+cur*1000;timers[i]=setInterval(()=>{let x=Math.max(0,Math.ceil((end-Date.now())/1000));el.textContent=fmt(x);input.value=x;if(!x)clearInterval(timers[i])},250)}
+function maybeAutoDone(i){if(defaults().autoDoneTimer){const done=document.getElementById("doneTime"+i);if(done)done.checked=true}}
+function startTimer(i){clearInterval(timers[i]);const el=document.getElementById("timer"+i),input=document.getElementById("completed"+i);let cur=+input.value||0;const end=Date.now()+cur*1000;timers[i]=setInterval(()=>{const x=Math.max(0,Math.ceil((end-Date.now())/1000));el.textContent=fmt(x);input.value=x;if(!x){clearInterval(timers[i]);maybeAutoDone(i)}},250)}
 function pauseTimer(i){clearInterval(timers[i])}
 function resetTimer(i,s){clearInterval(timers[i]);document.getElementById("timer"+i).textContent=fmt(s);document.getElementById("completed"+i).value=s}
+function adjustTimer(i,delta){const input=document.getElementById("completed"+i),el=document.getElementById("timer"+i);let next=Math.max(0,(+input.value||0)+delta);input.value=next;el.textContent=fmt(next);if(!next)maybeAutoDone(i)}
+
 function saveWorkout(){
- let editId=document.getElementById('save').dataset.editId||"",parts=editId?editId.split("|"):null,day=parts?+parts[1]:+document.getElementById('dayPick').value,p=PROGRAM[day],date=parts?parts[0]:new Date().toISOString().slice(0,10),data={date,day,completedAt:new Date().toISOString(),exercises:{}};
- p.items.forEach((it,i)=>{let name=it[0];
-   if(it[1]==="reps"){
-     let sets=[...document.querySelectorAll(`[data-name="${encodeURIComponent(name)}"]`)].map((x,r)=>({reps:+x.value||0,done:document.querySelector(`[data-done="${encodeURIComponent(name)}"][data-r="${r}"]`).checked}));
-     data.exercises[name]={kind:"reps",sets,target:[it[2],it[3]]};
-   }else data.exercises[name]={kind:"time",completed:+document.getElementById("completed"+i).value||0,done:document.getElementById("doneTime"+i).checked,target:it[3]};
- });
- let a=load().filter(x=>!(x.date===date&&x.day===day));a.push(data);store(a);
- let saveBtn=document.getElementById('save'),cancel=document.getElementById('cancelEdit');
- if(editId){saveBtn.dataset.editId="";saveBtn.textContent='✓ DONE — SAVE WORKOUT';if(cancel)cancel.style.display='none';document.getElementById('msg').innerHTML='<div class="ok">✓ Updated selected day entry.</div>'}
- else document.getElementById('msg').innerHTML='<div class="ok">✓ Saved. Defaults adapt by +1 per 3 completed and -1 per 2 skipped sessions.</div>';
- render();renderSettings();renderHistory();renderStats();renderProgress();
+  const editId=document.getElementById('save').dataset.editId||"",parts=editId?editId.split("|"):null;
+  const day=parts?+parts[1]:+document.getElementById('dayPick').value,p=PROGRAM[day],date=parts?parts[0]:localISO();
+  const data={date,day,completedAt:new Date().toISOString(),exercises:{}};
+  p.items.forEach((it,i)=>{const name=it[0];
+    if(it[1]==="reps"){
+      const sets=[...document.querySelectorAll(`[data-name="${encodeURIComponent(name)}"]`)].map((x,r)=>({reps:+x.value||0,done:document.querySelector(`[data-done="${encodeURIComponent(name)}"][data-r="${r}"]`).checked}));
+      data.exercises[name]={kind:"reps",sets,target:[it[2],it[3]]};
+    }else data.exercises[name]={kind:"time",completed:+document.getElementById("completed"+i).value||0,done:document.getElementById("doneTime"+i).checked,target:it[3]};
+  });
+  let a=load().filter(x=>!(x.date===date&&x.day===day));a.push(data);store(a);
+  const saveBtn=document.getElementById('save'),cancel=document.getElementById('cancelEdit');
+  if(editId){saveBtn.dataset.editId="";saveBtn.textContent='✓ DONE — SAVE WORKOUT';cancel.style.display='none';document.getElementById('msg').innerHTML='<div class="ok">✓ Updated selected day entry.</div>'}
+  else document.getElementById('msg').innerHTML='<div class="ok">✓ Saved. Defaults adapt by +1 per 3 completed and -1 per 2 skipped sessions.</div>';
+  render();renderSettings();renderHistory();renderStats();renderProgress();
 }
 function startEdit(date,day){
- document.getElementById('dayPick').value=day;render();renderSettings();
- let rec=load().find(x=>x.date===date&&x.day===day);if(!rec)return;
- let items=PROGRAM[day].items;
- Object.entries(rec.exercises).forEach(([name,e])=>{
-   let idx=items.findIndex(it=>it[0]===name);if(idx<0)return;
-   if(e.kind==="reps"){(e.sets||[]).forEach((s,r)=>{let i=document.querySelector(`[data-name="${encodeURIComponent(name)}"][data-r="${r}"]`),d=document.querySelector(`[data-done="${encodeURIComponent(name)}"][data-r="${r}"]`);if(i)i.value=s.reps;if(d)d.checked=!!s.done})}
-   else{let c=document.getElementById("completed"+idx),d=document.getElementById("doneTime"+idx),t=document.getElementById("timer"+idx);if(c)c.value=e.completed??0;if(d)d.checked=!!e.done;if(t)t.textContent=fmt(e.completed??0)}
- });
- let saveBtn=document.getElementById('save'),cancel=document.getElementById('cancelEdit');
- saveBtn.dataset.editId=`${date}|${day}`;saveBtn.textContent=`✓ UPDATE ${date} (Day ${day})`;if(cancel)cancel.style.display='inline-block';
- document.getElementById('msg').innerHTML=`<div class="editing">Editing ${date} Day ${day}. Update values and press save.</div>`;
- window.scrollTo({top:0,behavior:'smooth'});
+  document.getElementById('dayPick').value=day;render();renderSettings();
+  const rec=load().find(x=>x.date===date&&x.day===day);if(!rec)return;
+  const items=PROGRAM[day].items;
+  Object.entries(rec.exercises).forEach(([name,e])=>{const idx=items.findIndex(it=>it[0]===name);if(idx<0)return;
+    if(e.kind==="reps"){(e.sets||[]).forEach((s,r)=>{const i=document.querySelector(`[data-name="${encodeURIComponent(name)}"][data-r="${r}"]`),d=document.querySelector(`[data-done="${encodeURIComponent(name)}"][data-r="${r}"]`);if(i)i.value=s.reps;if(d)d.checked=!!s.done})}
+    else{const c=document.getElementById("completed"+idx),d=document.getElementById("doneTime"+idx),t=document.getElementById("timer"+idx);if(c)c.value=e.completed??0;if(d)d.checked=!!e.done;if(t)t.textContent=fmt(e.completed??0)}
+  });
+  const saveBtn=document.getElementById('save'),cancel=document.getElementById('cancelEdit');
+  saveBtn.dataset.editId=`${date}|${day}`;saveBtn.textContent=`✓ UPDATE ${date} (Day ${day})`;cancel.style.display='inline-block';
+  document.getElementById('msg').innerHTML=`<div class="editing">Editing ${date} Day ${day}. Update values and press save.</div>`;
+  window.scrollTo({top:0,behavior:'smooth'});
 }
+function duplicateEntry(date,day){
+  const rec=load().find(x=>x.date===date&&x.day===day);if(!rec)return;
+  const today=localISO();
+  const clone=JSON.parse(JSON.stringify(rec));
+  clone.date=today;clone.completedAt=new Date().toISOString();
+  let a=load().filter(x=>!(x.date===today&&x.day===day));a.push(clone);store(a);
+  document.getElementById('msg').innerHTML=`<div class="ok">✓ Duplicated ${date} Day ${day} to ${today}.</div>`;
+  render();renderHistory();renderStats();renderProgress();
+}
+
 function addDemoData(){
- let now=new Date(),a=load();
- for(let i=20;i>=0;i--){
-   let d=new Date(now);d.setDate(now.getDate()-i);let date=d.toISOString().slice(0,10),day=d.getDay()||7,p=PROGRAM[day],exercises={};
-   p.items.forEach(it=>{let name=it[0];
-     if(it[1]==="reps"){
-       let rounds=p.rounds||1,base=Math.max(1,it[2]-2+Math.floor(Math.random()*5)),bias=.55+Math.random()*.35;
-       let sets=Array.from({length:rounds},()=>{let reps=Math.max(1,base+Math.floor(Math.random()*3)-1),done=Math.random()<bias;return {reps,done}});
-       exercises[name]={kind:"reps",sets,target:[it[2],it[3]]};
-     }else{
-       let target=it[3],done=Math.random()>.28,drop=Math.floor((target||60)*(.2+Math.random()*.5)),completed=done?target:Math.max(0,target-drop);
-       exercises[name]={kind:"time",completed,done,target};
-     }
-   });
-   let rec={date,day,completedAt:new Date(d.getTime()+(16+Math.floor(Math.random()*4))*3600*1000).toISOString(),exercises,demo:true};
-   a=a.filter(x=>!(x.date===date&&x.day===day));a.push(rec);
- }
- store(a);document.getElementById('msg').innerHTML='<div class="ok">✓ Added 3 weeks of randomized demo data. Switch day and date range to inspect graphs.</div>';render();renderSettings();renderHistory();renderStats();renderProgress();
+  const now=new Date();let a=load();
+  for(let i=20;i>=0;i--){
+    const d=new Date(now);d.setDate(now.getDate()-i);const date=localISO(d),day=d.getDay()||7,p=PROGRAM[day],exercises={};
+    p.items.forEach(it=>{const name=it[0];
+      if(it[1]==="reps"){
+        const rounds=p.rounds||1,base=Math.max(1,it[2]-2+Math.floor(Math.random()*5)),bias=.55+Math.random()*.35;
+        const sets=Array.from({length:rounds},()=>{const reps=Math.max(1,base+Math.floor(Math.random()*3)-1),done=Math.random()<bias;return {reps,done}});
+        exercises[name]={kind:"reps",sets,target:[it[2],it[3]]};
+      }else{
+        const target=it[3],done=Math.random()>.28,drop=Math.floor((target||60)*(.2+Math.random()*.5)),completed=done?target:Math.max(0,target-drop);
+        exercises[name]={kind:"time",completed,done,target};
+      }
+    });
+    const rec={date,day,completedAt:new Date(d.getTime()+(16+Math.floor(Math.random()*4))*3600*1000).toISOString(),exercises,demo:true};
+    a=a.filter(x=>!(x.date===date&&x.day===day));a.push(rec);
+  }
+  store(a);document.getElementById('msg').innerHTML='<div class="ok">✓ Added 3 weeks of randomized demo data.</div>';render();renderSettings();renderHistory();renderStats();renderProgress();
 }
-function renderHistory(){let a=load().sort((x,y)=>y.date.localeCompare(x.date));document.getElementById('history').innerHTML=a.length?a.map(x=>`<div class="history"><b>${x.date} — Day ${x.day}</b> <button class="alt" style="padding:4px 8px;font-size:12px" onclick="startEdit('${x.date}',${x.day})">Edit</button><br>${Object.entries(x.exercises).map(([n,e])=>e.kind==="reps"?`${n}: ${e.sets.map(s=>s.reps+(s.done?" ✓":"")).join(" / ")}`:`${n}: ${fmt(e.completed)}${e.done?" ✓":""}`).join("<br>")}</div>`).join(""):"<span class='muted'>No saved workouts.</span>"}
-function renderStats(){let a=load(),sets=a.reduce((z,x)=>z+Object.values(x.exercises).reduce((q,e)=>q+(e.kind==="reps"?e.sets.length:0),0),0);document.getElementById('stats').innerHTML=`<div class="stat"><b>${a.length}</b>sessions</div><div class="stat"><b>${sets}</b>sets tracked</div><div class="stat"><b>${new Set(a.map(x=>x.day)).size}</b>days used</div>`}
+
+function renderHistory(){
+  const query=(document.getElementById("historySearch")?.value||"").toLowerCase().trim();
+  let dayFilter=+(document.getElementById("historyDay")?.value||0),from=document.getElementById("historyFrom")?.value||"",to=document.getElementById("historyTo")?.value||"";
+  const ex=(document.getElementById("historyExercise")?.value||"__all");
+  if(from&&to&&from>to){const t=from;from=to;to=t;document.getElementById('historyFrom').value=from;document.getElementById('historyTo').value=to}
+  let a=load().sort((x,y)=>y.date.localeCompare(x.date)).filter(x=>(!dayFilter||x.day===dayFilter)&&(!from||x.date>=from)&&(!to||x.date<=to));
+  a=a.filter(x=>{
+    const names=Object.keys(x.exercises||{});
+    const exMatch=ex==="__all"||names.includes(decodeURIComponent(ex));
+    const qMatch=!query||names.some(n=>n.toLowerCase().includes(query));
+    return exMatch&&qMatch;
+  });
+  document.getElementById('history').innerHTML=a.length?a.map(x=>`<div class="history"><b>${x.date} — Day ${x.day}</b> <button class="alt" style="padding:4px 8px;font-size:12px" onclick="startEdit('${x.date}',${x.day})">Edit</button> <button class="alt" style="padding:4px 8px;font-size:12px" onclick="duplicateEntry('${x.date}',${x.day})">Duplicate</button><br>${Object.entries(x.exercises).map(([n,e])=>e.kind==="reps"?`${n}: ${e.sets.map(s=>s.reps+(s.done?" ✓":"")).join(" / ")}`:`${n}: ${fmt(e.completed)}${e.done?" ✓":""}`).join("<br>")}</div>`).join(""):"<span class='muted'>No saved workouts for current filters.</span>";
+}
+function renderStats(){const a=load(),sets=a.reduce((z,x)=>z+Object.values(x.exercises).reduce((q,e)=>q+(e.kind==="reps"?e.sets.length:0),0),0);document.getElementById('stats').innerHTML=`<div class="stat"><b>${a.length}</b>sessions</div><div class="stat"><b>${sets}</b>sets tracked</div><div class="stat"><b>${new Set(a.map(x=>x.day)).size}</b>days used</div>`}
+function populateHistoryFilters(){
+  document.getElementById('historyDay').innerHTML='<option value="0">All days</option>'+Object.keys(PROGRAM).map(d=>`<option value="${d}">Day ${d}</option>`).join("");
+  const allNames=[...new Set(Object.values(PROGRAM).flatMap(d=>d.items.map(i=>i[0])))];
+  document.getElementById('historyExercise').innerHTML='<option value="__all">All exercises</option>'+allNames.map(n=>`<option value="${encodeURIComponent(n)}">${n}</option>`).join("");
+}
 function renderProgressExerciseOptions(){
- let day=+(document.getElementById('progressDay')?.value||document.getElementById('dayPick').value),pick=document.getElementById('progressExercise');
- if(!pick||!PROGRAM[day])return;
- let prev=pick.value||"__all";
- let opts=['<option value="__all">All exercises</option>'].concat(PROGRAM[day].items.map(it=>`<option value="${encodeURIComponent(it[0])}">${it[0]}</option>`));
- pick.innerHTML=opts.join("");
- pick.value=pick.querySelector(`option[value="${prev}"]`)?prev:"__all";
+  const day=+(document.getElementById('progressDay')?.value||document.getElementById('dayPick').value),pick=document.getElementById('progressExercise');
+  if(!pick||!PROGRAM[day])return;
+  const prev=pick.value||"__all";
+  pick.innerHTML=['<option value="__all">All exercises</option>'].concat(PROGRAM[day].items.map(it=>`<option value="${encodeURIComponent(it[0])}">${it[0]}</option>`)).join("");
+  pick.value=pick.querySelector(`option[value="${prev}"]`)?prev:"__all";
 }
 function renderProgress(){
- let day=+(document.getElementById('progressDay')?.value||document.getElementById('dayPick').value),all=load().filter(x=>x.day===day).sort((x,y)=>x.date.localeCompare(y.date));
- let from=document.getElementById('fromDate')?.value||"",to=document.getElementById('toDate')?.value||"";
- if(from&&to&&from>to){let t=from;from=to;to=t;document.getElementById('fromDate').value=from;document.getElementById('toDate').value=to}
- let a=all.filter(x=>(!from||x.date>=from)&&(!to||x.date<=to));
- if(!a.length){document.getElementById('progress').innerHTML="<p class='muted'>No sessions in selected date range.</p>";return}
- let exPick=document.getElementById('progressExercise'),selected=exPick?.value||"__all",selectedName=selected==="__all"?"":decodeURIComponent(selected);
- let totals=a.reduce((z,x)=>{Object.values(x.exercises).forEach(e=>{if(e.kind==="reps"){let done=e.sets.filter(s=>s.done);z.done+=done.length;z.total+=e.sets.length}else{z.done+=(e.done?1:0);z.total+=1}});return z},{done:0,total:0});
- let pct=totals.total?Math.round(totals.done*100/totals.total):0,last=a[a.length-1],first=a[0],dayItems=PROGRAM[day].items,dayExercises=dayItems.map(it=>it[0]);
- let hostW=Math.max(300,(document.getElementById('progress')?.clientWidth||620)-20);
- let w=a.length>5?(hostW+(a.length-5)*62):hostW;
- let colors=["#f59e0b","#60a5fa","#34d399","#a78bfa","#f472b6","#fb7185","#22d3ee"];
- let activeExercises=selected==="__all"?dayExercises:dayExercises.filter(n=>n===selectedName);
- let lines=activeExercises.map((name,idx)=>{let type=dayItems.find(it=>it[0]===name)?.[1]||"reps";let points=a.map(x=>{let e=x.exercises[name];if(!e)return 0;if(type==="reps"){let done=e.kind==="reps"?e.sets.filter(s=>s.done).map(s=>s.reps):[];return done.length?Math.round(done.reduce((s,v)=>s+v,0)/done.length):0}return e.kind==="time"?(e.completed||0):0});let unit=type==="reps"?"reps":"sec",max=Math.max(1,...points),coords=points.map((v,i)=>`${20+i*(w-40)/Math.max(1,points.length-1)},${160-(v/max)*130}`).join(" "),dots=points.map((v,i)=>`<circle cx="${20+i*(w-40)/Math.max(1,points.length-1)}" cy="${160-(v/max)*130}" r="4" fill="${colors[idx%colors.length]}"><title>${a[i].date}: ${unit==="reps"?v+" reps":fmt(v)}</title></circle>`).join("");return {name,type,color:colors[idx%colors.length],coords,dots,unit}});
- let labs=a.map((t,i)=>`<text x="${20+i*(w-40)/Math.max(1,Math.max(1,a.length-1))}" y="178" font-size="10" fill="var(--muted)" text-anchor="middle">${t.date.slice(5).replace("-","/")}</text>`).join(""),legend=lines.map(l=>`<span><i class="swatch" style="background:${l.color}"></i>${l.name} (${l.type==="reps"?"reps":"mm:ss"})</span>`).join(" ");
- document.getElementById('progress').innerHTML=`<div class="ok"><b>Day ${day} progress:</b> ${totals.done}/${totals.total} items done (${pct}%) across ${a.length} session${a.length>1?"s":""}. Latest: ${last.date}</div><div class="trendbox"><label>${selected==="__all"?"All exercise trend":selectedName+" trend"} (Day ${day})</label><div class="linechart"><svg width="${w}" height="185" viewBox="0 0 ${w} 185"><line x1="20" y1="160" x2="${w-20}" y2="160" stroke="var(--line)"/><line x1="20" y1="20" x2="20" y2="160" stroke="var(--line)"/>${lines.map(l=>`<polyline fill="none" stroke="${l.color}" stroke-width="3" points="${l.coords}"/>${l.dots}`).join("")}${labs}</svg></div><div class="legend">${legend}</div></div><div class="muted">Trend window: ${first.date} → ${last.date}. Date range: ${from||first.date} to ${to||last.date}. Each exercise is scaled to its own range.</div>`+a.map(x=>`<p><b>${x.date}</b><br>${Object.entries(x.exercises).filter(([n])=>selected==="__all"||n===selectedName).map(([n,e])=>e.kind==="reps"?`${n}: ${e.sets.map(s=>s.reps+(s.done?"✓":"")).join(" / ")}`:`${n}: ${fmt(e.completed)}${e.done?" ✓":""}`).join(" · ")}</p>`).join("");
+  const day=+(document.getElementById('progressDay')?.value||document.getElementById('dayPick').value),all=load().filter(x=>x.day===day).sort(byDate);
+  let from=document.getElementById('fromDate')?.value||"",to=document.getElementById('toDate')?.value||"";
+  if(from&&to&&from>to){const t=from;from=to;to=t;document.getElementById('fromDate').value=from;document.getElementById('toDate').value=to}
+  const a=all.filter(x=>(!from||x.date>=from)&&(!to||x.date<=to));
+  if(!a.length){document.getElementById('progress').innerHTML="<p class='muted'>No sessions in selected date range.</p>";return}
+  const selected=document.getElementById('progressExercise')?.value||"__all",selectedName=selected==="__all"?"":decodeURIComponent(selected),scale=document.getElementById('progressScale')?.value||"normalized";
+  const totals=a.reduce((z,x)=>{Object.values(x.exercises).forEach(e=>{if(e.kind==="reps"){const done=e.sets.filter(s=>s.done);z.done+=done.length;z.total+=e.sets.length}else{z.done+=(e.done?1:0);z.total+=1}});return z},{done:0,total:0});
+  const pct=totals.total?Math.round(totals.done*100/totals.total):0,last=a[a.length-1],first=a[0],dayItems=PROGRAM[day].items,dayExercises=dayItems.map(it=>it[0]);
+  const hostW=Math.max(300,(document.getElementById('progress')?.clientWidth||700)-20);const w=a.length>5?(hostW+(a.length-5)*62):hostW;
+  const colors=["#f59e0b","#60a5fa","#34d399","#a78bfa","#f472b6","#fb7185","#22d3ee"];
+  const activeExercises=selected==="__all"?dayExercises:dayExercises.filter(n=>n===selectedName);
+  let perLine=activeExercises.map((name,idx)=>{const type=dayItems.find(it=>it[0]===name)?.[1]||"reps";const points=a.map(x=>{const e=x.exercises[name];if(!e)return 0;if(type==="reps"){const done=e.kind==="reps"?e.sets.filter(s=>s.done).map(s=>s.reps):[];return done.length?Math.round(done.reduce((s,v)=>s+v,0)/done.length):0}return e.kind==="time"?(e.completed||0):0});return {name,type,color:colors[idx%colors.length],points};});
+  const globalMax=Math.max(1,...perLine.flatMap(l=>l.points));
+  const lines=perLine.map(l=>{const max=scale==="absolute"?globalMax:Math.max(1,...l.points);const coords=l.points.map((v,i)=>`${20+i*(w-40)/Math.max(1,l.points.length-1)},${160-(v/max)*130}`).join(" ");const dots=l.points.map((v,i)=>`<circle cx="${20+i*(w-40)/Math.max(1,l.points.length-1)}" cy="${160-(v/max)*130}" r="4" fill="${l.color}"><title>${a[i].date}: ${l.type==="reps"?v+" reps":fmt(v)}</title></circle>`).join("");return {...l,coords,dots};});
+  const labs=a.map((t,i)=>`<text x="${20+i*(w-40)/Math.max(1,Math.max(1,a.length-1))}" y="178" font-size="10" fill="var(--muted)" text-anchor="middle">${t.date.slice(5).replace("-","/")}</text>`).join(""),legend=lines.map(l=>`<span><i class="swatch" style="background:${l.color}"></i>${l.name} (${l.type==="reps"?"reps":"mm:ss"})</span>`).join(" ");
+  document.getElementById('progress').innerHTML=`<div class="ok"><b>Day ${day} progress:</b> ${totals.done}/${totals.total} items done (${pct}%) across ${a.length} session${a.length>1?"s":""}. Latest: ${last.date}</div><div class="trendbox"><label>${selected==="__all"?"All exercise trend":selectedName+" trend"} (Day ${day})</label><div class="linechart"><svg width="${w}" height="185" viewBox="0 0 ${w} 185"><line x1="20" y1="160" x2="${w-20}" y2="160" stroke="var(--line)"/><line x1="20" y1="20" x2="20" y2="160" stroke="var(--line)"/>${lines.map(l=>`<polyline fill="none" stroke="${l.color}" stroke-width="3" points="${l.coords}"/>${l.dots}`).join("")}${labs}</svg></div><div class="legend">${legend}</div></div><div class="muted">Trend window: ${first.date} → ${last.date}. Date range: ${from||first.date} to ${to||last.date}. Scale mode: ${scale}. ${scale==="normalized"?"Each exercise is scaled to its own range.":"All exercises share a common y-scale."}</div>`+a.map(x=>`<p><b>${x.date}</b><br>${Object.entries(x.exercises).filter(([n])=>selected==="__all"||n===selectedName).map(([n,e])=>e.kind==="reps"?`${n}: ${e.sets.map(s=>s.reps+(s.done?"✓":"")).join(" / ")}`:`${n}: ${fmt(e.completed)}${e.done?" ✓":""}`).join(" · ")}</p>`).join("");
 }
+
+function runSmokeTests(){
+  const logs=[];const pass=(name,ok,msg="")=>logs.push(`${ok?"PASS":"FAIL"}: ${name}${msg?" - "+msg:""}`);
+  const today=localISO();pass("localISO format",/^\d{4}-\d{2}-\d{2}$/.test(today),today);
+  const old=[{date:today,day:1,exercises:{}}];localStorage.setItem("__tmp_migrate",JSON.stringify(old));
+  const migrated=(function(){const raw=JSON.parse(localStorage.getItem("__tmp_migrate"));return migrateWorkouts(raw)})();
+  pass("schema migration",migrated.schema===SCHEMA&&Array.isArray(migrated.workouts));localStorage.removeItem("__tmp_migrate");
+  const before=load().length;addDemoData();const after=load().length;pass("demo data adds entries",after>=before);
+  renderProgressExerciseOptions();pass("progress exercise options",document.getElementById("progressExercise").options.length>1);
+  const prev=document.getElementById("progressScale").value;document.getElementById("progressScale").value="absolute";renderProgress();pass("progress absolute mode render",document.getElementById("progress").innerHTML.includes("Scale mode: absolute"));document.getElementById("progressScale").value=prev;renderProgress();
+  document.getElementById("msg").innerHTML=`<div class="ok">Smoke tests complete.<br>${logs.join("<br>")}</div>`;
+}
+
+function handleShortcuts(e){
+  const tag=(e.target?.tagName||"").toLowerCase();if(tag==="input"||tag==="textarea"||tag==="select"||e.target?.isContentEditable)return;
+  if(e.key.toLowerCase()==="s"){e.preventDefault();saveWorkout();return}
+  if(e.key.toLowerCase()==="n"||e.key.toLowerCase()==="p"){
+    const dayPick=document.getElementById("dayPick");let day=+dayPick.value;
+    day=e.key.toLowerCase()==="n"?(day%7)+1:(day===1?7:day-1);
+    dayPick.value=day;document.getElementById("progressDay").value=day;renderProgressExerciseOptions();render();renderSettings();renderProgress();
+  }
+}
+
 function init(){
- applyTheme(localStorage.getItem(THEMEKEY)||"night");
- document.getElementById('themeToggle').onclick=toggleTheme;
- document.getElementById('date').textContent=new Date().toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"long",day:"numeric"});
- document.getElementById('dayPick').innerHTML=Object.entries(PROGRAM).map(([d])=>`<option value="${d}">Day ${d}</option>`).join("");
- document.getElementById('progressDay').innerHTML=Object.entries(PROGRAM).map(([d])=>`<option value="${d}">Day ${d}</option>`).join("");
- let dow=new Date().getDay(),todayDay=dow===0?7:dow;document.getElementById('dayPick').value=todayDay;document.getElementById('progressDay').value=todayDay;
- renderProgressExerciseOptions();
- document.getElementById('dayPick').onchange=()=>{let v=document.getElementById('dayPick').value;document.getElementById('progressDay').value=v;renderProgressExerciseOptions();render();renderSettings();renderProgress()};document.getElementById('progressDay').onchange=()=>{renderProgressExerciseOptions();renderProgress()};document.getElementById('progressExercise').onchange=renderProgress;document.getElementById('saveSettings').onclick=saveDefaultSettings;document.getElementById('save').onclick=saveWorkout;
- document.getElementById('export').onclick=async()=>{let now=new Date(),dd=String(now.getDate()).padStart(2,"0"),mm=String(now.getMonth()+1).padStart(2,"0"),yyyy=now.getFullYear(),day=+document.getElementById('dayPick').value,filename=`Workout_Day${day}_${dd}_${mm}_${yyyy}.json`,payload=JSON.stringify({workouts:load(),defaults:defaults()},null,2),msg=document.getElementById('msg');if(window.showSaveFilePicker){try{let h=await window.showSaveFilePicker({suggestedName:filename,types:[{description:"JSON",accept:{"application/json":[".json"]}}]}),w=await h.createWritable();await w.write(payload);await w.close();if(msg)msg.innerHTML='<div class="ok">✓ Exported using save picker.</div>';return}catch(e){if(e?.name==="AbortError")return}}let b=new Blob([payload],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);if(msg)msg.innerHTML='<div class="muted">Save picker not supported here. File downloaded using browser fallback.</div>'};
- document.getElementById('import').onclick=()=>document.getElementById('file').click();document.getElementById('file').onchange=async e=>{try{let f=e.target.files?.[0];if(!f)return;let x=JSON.parse(await f.text());if(Array.isArray(x)){store(x)}else{store(x.workouts||[]);if(x.defaults)localStorage.setItem(SETKEY,JSON.stringify(x.defaults))}alert("Imported");location.reload()}catch{alert("Invalid backup")}};
- let now=new Date(),fromDefault=new Date(now);fromDefault.setMonth(fromDefault.getMonth()-1);document.getElementById('fromDate').value=fromDefault.toISOString().slice(0,10);document.getElementById('toDate').value=now.toISOString().slice(0,10);
- document.getElementById('fromDate').onchange=renderProgress;document.getElementById('toDate').onchange=renderProgress;
- document.getElementById('demoData').onclick=()=>{if(confirm("Add 3 weeks of demo data for graph testing?"))addDemoData()};
- document.getElementById('cancelEdit').onclick=()=>{document.getElementById('save').dataset.editId="";document.getElementById('save').textContent='✓ DONE — SAVE WORKOUT';document.getElementById('cancelEdit').style.display='none';document.getElementById('msg').innerHTML='';render()};
- document.getElementById('clear').onclick=()=>{if(confirm("Delete all workout history and settings?")){localStorage.removeItem(DATAKEY);localStorage.removeItem(SETKEY);location.reload()}};
- if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{})}
- render();renderSettings();renderHistory();renderStats();renderProgress();
+  applyTheme(localStorage.getItem(THEMEKEY)||"night");document.getElementById('themeToggle').onclick=toggleTheme;
+  document.getElementById('date').textContent=new Date().toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+  document.getElementById('dayPick').innerHTML=Object.keys(PROGRAM).map(d=>`<option value="${d}">Day ${d}</option>`).join("");
+  document.getElementById('progressDay').innerHTML=Object.keys(PROGRAM).map(d=>`<option value="${d}">Day ${d}</option>`).join("");
+  const dow=new Date().getDay(),todayDay=dow===0?7:dow;document.getElementById('dayPick').value=todayDay;document.getElementById('progressDay').value=todayDay;
+  renderProgressExerciseOptions();populateHistoryFilters();
+
+  document.getElementById('dayPick').onchange=()=>{const v=document.getElementById('dayPick').value;document.getElementById('progressDay').value=v;renderProgressExerciseOptions();render();renderSettings();renderProgress()};
+  document.getElementById('progressDay').onchange=()=>{renderProgressExerciseOptions();renderProgress()};
+  document.getElementById('progressExercise').onchange=renderProgress;document.getElementById('progressScale').onchange=renderProgress;
+  document.getElementById('saveSettings').onclick=saveDefaultSettings;document.getElementById('save').onclick=saveWorkout;
+  document.getElementById('historySearch').oninput=renderHistory;document.getElementById('historyDay').onchange=renderHistory;document.getElementById('historyFrom').onchange=renderHistory;document.getElementById('historyTo').onchange=renderHistory;document.getElementById('historyExercise').onchange=renderHistory;
+  document.getElementById('smoke').onclick=runSmokeTests;
+
+  document.getElementById('export').onclick=async()=>{
+    const now=new Date(),dd=String(now.getDate()).padStart(2,"0"),mm=String(now.getMonth()+1).padStart(2,"0"),yyyy=now.getFullYear(),day=+document.getElementById('dayPick').value,filename=`Workout_Day${day}_${dd}_${mm}_${yyyy}.json`;
+    const payload=JSON.stringify({schema:SCHEMA,workouts:load(),defaults:defaults()},null,2),msg=document.getElementById('msg');
+    if(window.showSaveFilePicker){try{const h=await window.showSaveFilePicker({suggestedName:filename,types:[{description:"JSON",accept:{"application/json":[".json"]}}]}),w=await h.createWritable();await w.write(payload);await w.close();msg.innerHTML='<div class="ok">✓ Exported using save picker.</div>';return}catch(e){if(e?.name==="AbortError")return}}
+    const b=new Blob([payload],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);msg.innerHTML='<div class="muted">Save picker not supported here. File downloaded using browser fallback.</div>';
+  };
+
+  document.getElementById('import').onclick=()=>document.getElementById('file').click();
+  document.getElementById('file').onchange=async e=>{try{const f=e.target.files?.[0];if(!f)return;const x=JSON.parse(await f.text());const migrated=migrateWorkouts(Array.isArray(x)?x:(x.workouts||[]));store(migrated.workouts);if(x.defaults)localStorage.setItem(SETKEY,JSON.stringify({...x.defaults,schema:SCHEMA}));alert("Imported");location.reload()}catch{alert("Invalid backup")}};
+
+  const now=new Date(),fromDefault=new Date(now);fromDefault.setMonth(fromDefault.getMonth()-1);document.getElementById('fromDate').value=localISO(fromDefault);document.getElementById('toDate').value=localISO(now);document.getElementById('historyFrom').value=localISO(fromDefault);document.getElementById('historyTo').value=localISO(now);
+  document.getElementById('fromDate').onchange=renderProgress;document.getElementById('toDate').onchange=renderProgress;
+  document.getElementById('demoData').onclick=()=>{if(confirm("Add 3 weeks of demo data for graph testing?"))addDemoData()};
+  document.getElementById('cancelEdit').onclick=()=>{document.getElementById('save').dataset.editId="";document.getElementById('save').textContent='✓ DONE — SAVE WORKOUT';document.getElementById('cancelEdit').style.display='none';document.getElementById('msg').innerHTML='';render()};
+  document.getElementById('clear').onclick=()=>{if(confirm("Delete all workout history and settings?")){localStorage.removeItem(DATAKEY);localStorage.removeItem(SETKEY);workoutsCache=[];location.reload()}};
+  document.addEventListener("keydown",handleShortcuts);
+  if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{})}
+  render();renderSettings();renderHistory();renderStats();renderProgress();
 }
 init();
 </script></body></html>
