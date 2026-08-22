@@ -1,4 +1,4 @@
-const CACHE = "workout-tracker-v22-quiz-feedback-flow";
+const CACHE = "workout-tracker-v24-quiz-edit-export";
 const ASSETS = ["./", "./index.html", "./manifest.json"];
 
 self.addEventListener("install", (e) => {
