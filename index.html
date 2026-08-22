@@ -64,6 +64,9 @@ details>div{margin-top:10px}
 .quiz-choice{display:flex;gap:8px;align-items:flex-start;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--surface);margin-top:8px}
 .quiz-choice input{width:auto;margin-top:2px}
 .quiz-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.quiz-choice.correct{border-color:#16a34a;background:#052e1a}
+.quiz-choice.wrong{border-color:#dc2626;background:#450a0a}
+.quiz-feedback{margin-top:10px}
 .sidepanel{position:fixed;top:0;right:0;height:100vh;width:min(520px,92vw);background:var(--card);border-left:1px solid var(--line);box-shadow:-8px 0 24px #0006;transform:translateX(100%);transition:transform .22s ease;z-index:40;display:flex;flex-direction:column}
 .sidepanel.open{transform:translateX(0)}
 .sidepanel-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 14px 10px;border-bottom:1px solid var(--line)}
@@ -134,10 +137,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
   <label for="quizFile">Import Quiz Sheet (CSV from Excel)<input id="quizFile" type="file" accept=".csv,.tsv,.txt,.xlsx,.xls"></label>
   <label for="quizDifficulty">Difficulty Filter<select id="quizDifficulty"><option value="__all">All levels</option></select></label>
 </div>
-<div class="quiz-actions"><button id="importQuiz" type="button">Import Quiz</button><button id="quizNext" type="button" class="alt">Next Question</button><button id="clearQuiz" type="button" class="alt">Clear Quiz Data</button></div>
+<div class="quiz-actions"><button id="importQuiz" type="button">Import Quiz</button><button id="clearQuiz" type="button" class="alt">Clear Quiz Data</button></div>
 <div id="quizMsg" aria-live="polite"></div>
 <div id="quizSummary" class="stats"></div>
 <div id="quizCard"></div>
+<div id="quizFeedback" class="quiz-feedback"></div>
 <div id="quizList"></div>
 </section>
 </div>
@@ -376,8 +380,10 @@ function renderQuizDifficulty(){
 }
 function renderQuiz(){
   const list=quizFiltered();
-  const summary=document.getElementById("quizSummary"),card=document.getElementById("quizCard"),rows=document.getElementById("quizList");
-  if(!summary||!card||!rows)return;
+  const summary=document.getElementById("quizSummary"),card=document.getElementById("quizCard"),rows=document.getElementById("quizList"),feedback=document.getElementById("quizFeedback");
+  if(!summary||!card||!rows||!feedback)return;
+  feedback.innerHTML="";
+  document.getElementById("quizMsg").innerHTML="";
   const all=loadQuiz();
   const pass=all.reduce((s,q)=>s+q.pass,0),fail=all.reduce((s,q)=>s+q.fail,0),attempts=pass+fail,accuracy=attempts?Math.round(pass*100/attempts):0;
   summary.innerHTML=`<div class="stat"><b>${all.length}</b>questions</div><div class="stat"><b>${pass}</b>pass</div><div class="stat"><b>${fail}</b>fail</div>`;
@@ -393,12 +399,10 @@ function renderQuiz(){
   }
   if(quizCursor>=list.length)quizCursor=0;
   const q=list[quizCursor];
-  card.innerHTML=`<div class="card secondary"><h3>Q${quizCursor+1}/${list.length} · #${escHtml(q.slNo)} · ${escHtml(q.difficulty)}</h3><p><b>${escHtml(q.question)}</b></p>${q.choices.map((c,i)=>`<label class="quiz-choice" for="quizChoice${i}"><input id="quizChoice${i}" name="quizChoice" type="radio" value="${i}"><span>${escHtml(c)}</span></label>`).join("")}<div class="quiz-actions"><button id="quizSubmit" type="button">Submit Answer</button><button id="quizNextInline" type="button" class="alt">Next Question</button></div><div class="muted">Pass: ${q.pass} · Fail: ${q.fail} · Accuracy: ${accuracy}%</div>${q.notes?`<div class="muted">Notes: ${escHtml(q.notes)}</div>`:""}</div>`;
+  card.innerHTML=`<div class="card secondary"><h3>Q${quizCursor+1}/${list.length} · #${escHtml(q.slNo)} · ${escHtml(q.difficulty)}</h3><p><b>${escHtml(q.question)}</b></p>${q.choices.map((c,i)=>`<label class="quiz-choice" id="quizChoiceLabel${i}" for="quizChoice${i}"><input id="quizChoice${i}" name="quizChoice" type="radio" value="${i}"><span>${escHtml(c)}</span></label>`).join("")}<div class="quiz-actions"><button id="quizSubmit" type="button">Submit Answer</button></div><div class="muted">Pass: ${q.pass} · Fail: ${q.fail} · Accuracy: ${accuracy}%</div></div>`;
   rows.innerHTML="";
   const submit=document.getElementById("quizSubmit");
   if(submit)submit.onclick=submitQuizAnswer;
-  const nextInline=document.getElementById("quizNextInline");
-  if(nextInline)nextInline.onclick=nextQuiz;
 }
 function importQuizSheet(){
   const f=document.getElementById("quizFile")?.files?.[0];
@@ -435,9 +439,24 @@ function submitQuizAnswer(){
   const correct=q.answerIndex>=0?selected===q.answerIndex:String(q.choices[selected]||"").trim().toLowerCase()===String(q.answerText||"").trim().toLowerCase();
   if(correct)q.pass+=1;else q.fail+=1;
   saveQuiz(all);
+  q.choices.forEach((_,i)=>{
+    const label=document.getElementById(`quizChoiceLabel${i}`),input=document.getElementById(`quizChoice${i}`);
+    if(!label||!input)return;
+    input.disabled=true;
+    label.classList.remove("correct","wrong");
+    if(q.answerIndex>=0&&i===q.answerIndex)label.classList.add("correct");
+    if(i===selected&&!correct)label.classList.add("wrong");
+  });
+  const submitBtn=document.getElementById("quizSubmit");
+  if(submitBtn)submitBtn.disabled=true;
   const right=q.answerIndex>=0?q.choices[q.answerIndex]:(q.answerText||"");
-  document.getElementById("quizMsg").innerHTML=`<div class="${correct?"ok":"muted"}">${correct?"Correct":"Wrong"} · Right answer: ${escHtml(right)}${q.notes?` · Notes: ${escHtml(q.notes)}`:""} · Pass: ${q.pass} · Fail: ${q.fail}</div>`;
-  renderQuiz();
+  document.getElementById("quizMsg").innerHTML=`<div class="${correct?"ok":"muted"}">${correct?"Correct":"Wrong"}</div>`;
+  document.getElementById("quizFeedback").innerHTML=`<div class="card secondary"><div class="muted">Right answer: ${escHtml(right)}</div><div class="muted">Pass: ${q.pass} · Fail: ${q.fail}</div>${q.notes?`<div class="muted">Notes: ${escHtml(q.notes)}</div>`:""}<div class="quiz-actions"><button id="quizNextAfterSubmit" type="button" class="alt">Next Question</button></div></div>`;
+  const nextBtn=document.getElementById("quizNextAfterSubmit");
+  if(nextBtn)nextBtn.onclick=nextQuiz;
+  renderQuizDifficulty();
+  const all2=loadQuiz();const pass2=all2.reduce((s,x)=>s+x.pass,0),fail2=all2.reduce((s,x)=>s+x.fail,0);
+  document.getElementById("quizSummary").innerHTML=`<div class="stat"><b>${all2.length}</b>questions</div><div class="stat"><b>${pass2}</b>pass</div><div class="stat"><b>${fail2}</b>fail</div>`;
 }
 function nextQuiz(){
   const count=quizFiltered().length;
@@ -955,7 +974,6 @@ function init(){
   document.getElementById("savePlan").onclick=savePlanEntry;
   document.getElementById("cancelPlanEdit").onclick=()=>{clearPlanEditor();document.getElementById("planMsg").innerHTML=""};
   document.getElementById("importQuiz").onclick=importQuizSheet;
-  document.getElementById("quizNext").onclick=nextQuiz;
   document.getElementById("clearQuiz").onclick=clearQuizData;
   document.getElementById("quizDifficulty").onchange=()=>{quizCursor=0;renderQuiz();};
 
