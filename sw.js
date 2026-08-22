@@ -1,4 +1,4 @@
-const CACHE = "workout-tracker-v30-csv-open-compat";
+const CACHE = "workout-tracker-v34-flashcards-page";
 const ASSETS = ["./", "./index.html", "./manifest.json"];
 
 self.addEventListener("install", (e) => {
