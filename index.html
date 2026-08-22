@@ -5,8 +5,8 @@
 <meta name="theme-color" content="#111827"><link rel="manifest" href="manifest.json">
 <title>Workout Tracker v8</title>
 <style>
-:root{--bg:#0b1220;--text:#e5e7eb;--header:#020617;--card:#111827;--line:#1f2937;--muted:#94a3b8;--inputBg:#0f172a;--inputBorder:#334155;--btn:#2563eb;--btnText:#fff;--btnAlt:#1f2937;--btnAltText:#e5e7eb;--surface:#0f172a;--okBg:#052e1a;--okText:#86efac;--focus:#22d3ee}
-body.day{--bg:#f3f4f6;--text:#111827;--header:#111827;--card:#fff;--line:#eee;--muted:#6b7280;--inputBg:#fff;--inputBorder:#d1d5db;--btn:#111827;--btnText:#fff;--btnAlt:#e5e7eb;--btnAltText:#111827;--surface:#f8fafc;--okBg:#ecfdf5;--okText:#166534;--focus:#0ea5e9}
+:root{--bg:#0b1220;--text:#e5e7eb;--header:#020617;--card:#111827;--line:#1f2937;--muted:#94a3b8;--inputBg:#0f172a;--inputBorder:#334155;--btn:#2563eb;--btnText:#fff;--btnAlt:#1f2937;--btnAltText:#e5e7eb;--surface:#0f172a;--okBg:#052e1a;--okText:#86efac;--focus:#22d3ee;--flashA:#0f172a;--flashB:#1e293b;--flashC:#0ea5e9}
+body.day{--bg:#f3f4f6;--text:#111827;--header:#111827;--card:#fff;--line:#eee;--muted:#6b7280;--inputBg:#fff;--inputBorder:#d1d5db;--btn:#111827;--btnText:#fff;--btnAlt:#e5e7eb;--btnAltText:#111827;--surface:#f8fafc;--okBg:#ecfdf5;--okText:#166534;--focus:#0ea5e9;--flashA:#ecfeff;--flashB:#e0f2fe;--flashC:#0ea5e9}
 body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,sans-serif}
 main{max-width:920px;margin:auto;padding:14px}
 .page-head{background:var(--header);color:#fff;padding:18px;border-radius:16px}
@@ -69,7 +69,7 @@ details>div{margin-top:10px}
 .quiz-feedback{margin-top:10px}
 .quiz-editor{margin-top:10px}
 .quiz-editor-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.flash-card{min-height:220px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:10px;user-select:none;touch-action:pan-y}
+.flash-card{min-height:260px;max-height:68vh;overflow-y:auto;display:flex;flex-direction:column;justify-content:flex-start;align-items:flex-start;gap:12px;user-select:none;touch-action:pan-y;background:linear-gradient(140deg,var(--flashA),var(--flashB));border:1px solid color-mix(in oklab,var(--flashC) 35%,var(--line));box-shadow:0 10px 28px #0003}
 .flash-timer{font-weight:700;color:var(--muted)}
 .sidepanel{position:fixed;top:0;right:0;height:100vh;width:min(520px,92vw);background:var(--card);border-left:1px solid var(--line);box-shadow:-8px 0 24px #0006;transform:translateX(100%);transition:transform .22s ease;z-index:40;display:flex;flex-direction:column}
 .sidepanel.open{transform:translateX(0)}
@@ -157,7 +157,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 <section class="card secondary"><h2>Flash Card Practice</h2>
 <div class="quiz-grid">
   <label for="flashDifficulty">Difficulty Filter<select id="flashDifficulty"><option value="__all">All levels</option></select></label>
+  <label for="flashShowSec">Flash Card Time (sec)<input id="flashShowSec" type="number" min="5" max="300" value="20"></label>
 </div>
+<div class="quiz-actions"><button id="flashStart" type="button">Start</button><button id="flashSaveSettings" type="button" class="alt">Save Flash Time</button></div>
 <div id="flashMsg" class="muted">Each card auto-advances in 20s. Hold card to pause. Swipe left/right for next/previous.</div>
 <div id="flashCard"></div>
 </section>
@@ -213,12 +215,12 @@ const BASE_PROGRAM={
 ["Hydration & Sleep","hold",0,0,"Recovery focus","Hydration and sleep"]]}
 };
 
-const DATAKEY="Workout Tracker",SETKEY="Workout Tracker Defaults",THEMEKEY="Workout Tracker Theme",PROGRAMKEY="Workout Tracker Program",PLANKEY="Workout Tracker Personal Plans",QUIZKEY="Workout Tracker Quiz",QUIZSESSIONKEY="Workout Tracker Quiz Session",QUIZSETKEY="Workout Tracker Quiz Settings",VIEWKEY="Workout Tracker Active View";
+const DATAKEY="Workout Tracker",SETKEY="Workout Tracker Defaults",THEMEKEY="Workout Tracker Theme",PROGRAMKEY="Workout Tracker Program",PLANKEY="Workout Tracker Personal Plans",QUIZKEY="Workout Tracker Quiz",QUIZSESSIONKEY="Workout Tracker Quiz Session",FLASHSESSIONKEY="Workout Tracker Flash Session",QUIZSETKEY="Workout Tracker Quiz Settings",VIEWKEY="Workout Tracker Active View";
 const SCHEMA=2;
 let timers={},workoutsCache=null;
 let PROGRAM=null;
 let quizCursor=0;
-let flashTimer=null,flashRemaining=20,flashPaused=false,flashIndex=0,flashSwipeStartX=null;
+let flashTimer=null,flashRemaining=20,flashPaused=false,flashIndex=0,flashSwipeStartX=null,flashStarted=false,flashSeenSec=0;
 
 function localISO(d=new Date()){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");return `${y}-${m}-${day}`}
 function fmt(s){s=Math.max(0,Math.round(s));return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")}
@@ -442,11 +444,18 @@ function saveQuiz(questions){
   localStorage.setItem(QUIZKEY,JSON.stringify({schema:SCHEMA,questions}));
 }
 function loadQuizSettings(){
-  const s=readJson(QUIZSETKEY,{dailyLimit:10});
-  return {dailyLimit:Math.max(1,Math.min(200,+s?.dailyLimit||10))};
+  const s=readJson(QUIZSETKEY,{dailyLimit:10,flashShowSec:20});
+  return {
+    dailyLimit:Math.max(1,Math.min(200,+s?.dailyLimit||10)),
+    flashShowSec:Math.max(5,Math.min(300,+s?.flashShowSec||20))
+  };
 }
 function saveQuizSettings(s){
-  const x={dailyLimit:Math.max(1,Math.min(200,+s?.dailyLimit||10))};
+  const prev=loadQuizSettings();
+  const x={
+    dailyLimit:Math.max(1,Math.min(200,+((s&&"dailyLimit" in s)?s.dailyLimit:prev.dailyLimit)||10)),
+    flashShowSec:Math.max(5,Math.min(300,+((s&&"flashShowSec" in s)?s.flashShowSec:prev.flashShowSec)||20))
+  };
   localStorage.setItem(QUIZSETKEY,JSON.stringify(x));
 }
 function escHtml(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
@@ -504,6 +513,10 @@ function loadQuizSession(){
   return readJson(QUIZSESSIONKEY,{date:"",filter:"__all",order:[],cursor:0});
 }
 function saveQuizSession(s){localStorage.setItem(QUIZSESSIONKEY,JSON.stringify(s))}
+function loadFlashSession(){
+  return readJson(FLASHSESSIONKEY,{date:"",filter:"__all",order:[],cursor:0});
+}
+function saveFlashSession(s){localStorage.setItem(FLASHSESSIONKEY,JSON.stringify(s))}
 function ensureQuizSession(list){
   const today=localISO(),filter=document.getElementById("quizDifficulty")?.value||"__all",target=Math.min(loadQuizSettings().dailyLimit,list.length);
   let s=loadQuizSession();
@@ -523,8 +536,18 @@ function saveDailyQuizLimit(){
   saveQuizSettings({dailyLimit:v});
   document.getElementById("quizDailyLimit").value=String(v);
   localStorage.removeItem(QUIZSESSIONKEY);
+  localStorage.removeItem(FLASHSESSIONKEY);
   renderQuiz();
+  renderFlashCard();
   document.getElementById("quizMsg").innerHTML=`<div class='ok'>✓ Daily question limit saved: ${v}</div>`;
+}
+function saveFlashTimeSetting(){
+  const v=Math.max(5,Math.min(300,+document.getElementById("flashShowSec").value||20));
+  saveQuizSettings({flashShowSec:v});
+  document.getElementById("flashShowSec").value=String(v);
+  flashRemaining=v;flashStarted=false;flashPaused=false;flashSeenSec=0;
+  renderFlashCard();
+  document.getElementById("flashMsg").textContent=`Flash card time saved: ${v}s`;
 }
 function flashFiltered(){
   const all=loadQuiz();
@@ -540,46 +563,88 @@ function renderFlashDifficultyOptions(){
   pick.value=[...pick.options].some(o=>o.value===prev)?prev:"__all";
 }
 function stopFlashCountdown(){if(flashTimer){clearInterval(flashTimer);flashTimer=null}}
+function ensureFlashSession(list){
+  const today=localISO(),filter=document.getElementById("flashDifficulty")?.value||"__all",target=Math.min(loadQuizSettings().dailyLimit,list.length);
+  let s=loadFlashSession();
+  const validIds=new Set(list.map(q=>q.id));
+  if(s.date!==today||s.filter!==filter||!Array.isArray(s.order)||!s.order.length){
+    s={date:today,filter,order:buildDailyQuizOrder(list,target),cursor:0};saveFlashSession(s);return s;
+  }
+  s.order=s.order.filter(id=>validIds.has(id));
+  if(!s.order.length&&target>0)s.order=buildDailyQuizOrder(list,target);
+  if(s.order.length>target)s.order=s.order.slice(0,target);
+  if(s.cursor>=s.order.length)s.cursor=0;
+  saveFlashSession(s);
+  return s;
+}
+function flashCurrentQuestion(){
+  const list=flashFiltered(),sess=ensureFlashSession(list);
+  if(!list.length||!sess.order.length)return null;
+  const id=sess.order[sess.cursor];
+  return list.find(q=>q.id===id)||null;
+}
+function finalizeFlashView(){
+  if(!flashStarted)return;
+  const q=flashCurrentQuestion();
+  if(!q)return;
+  if(flashSeenSec>=15){
+    const all=loadQuiz();
+    const idx=all.findIndex(x=>x.id===q.id);
+    if(idx>=0){all[idx].pass=Math.max(0,+all[idx].pass||0)+1;saveQuiz(all)}
+  }
+}
 function startFlashCountdown(){
   stopFlashCountdown();
   flashTimer=setInterval(()=>{
+    if(!flashStarted)return;
     if(flashPaused)return;
     if(!document.getElementById("viewFlash")?.classList.contains("active"))return;
     flashRemaining=Math.max(0,flashRemaining-1);
+    flashSeenSec++;
     const t=document.getElementById("flashTimer");
     if(t)t.textContent=`${flashRemaining}s`;
     if(flashRemaining===0)flashNext();
   },1000);
 }
 function flashPrev(){
-  const list=flashFiltered();
-  if(!list.length)return;
-  flashIndex=(flashIndex-1+list.length)%list.length;
-  flashRemaining=20;flashPaused=false;
+  const list=flashFiltered(),sess=ensureFlashSession(list);
+  if(!sess.order.length)return;
+  finalizeFlashView();
+  sess.cursor=(sess.cursor-1+sess.order.length)%sess.order.length;
+  saveFlashSession(sess);
+  flashRemaining=loadQuizSettings().flashShowSec;flashPaused=false;flashSeenSec=0;
   renderFlashCard();
 }
 function flashNext(){
+  const list=flashFiltered(),sess=ensureFlashSession(list);
+  if(!sess.order.length)return;
+  finalizeFlashView();
+  sess.cursor=(sess.cursor+1)%sess.order.length;
+  saveFlashSession(sess);
+  flashRemaining=loadQuizSettings().flashShowSec;flashPaused=false;flashSeenSec=0;
+  renderFlashCard();
+}
+function startFlashSession(){
   const list=flashFiltered();
-  if(!list.length)return;
-  flashIndex=(flashIndex+1)%list.length;
-  flashRemaining=20;flashPaused=false;
+  if(!list.length){document.getElementById("flashMsg").textContent="No flash cards available.";return}
+  ensureFlashSession(list);
+  flashStarted=true;flashPaused=false;flashSeenSec=0;flashRemaining=loadQuizSettings().flashShowSec;
   renderFlashCard();
 }
 function renderFlashCard(){
   const host=document.getElementById("flashCard");
   if(!host)return;
-  const list=flashFiltered();
+  const list=flashFiltered(),sess=ensureFlashSession(list);
   if(!list.length){
     stopFlashCountdown();
     host.innerHTML="<p class='muted'>No quiz data available for flash cards. Import quiz first.</p>";
     return;
   }
-  if(flashIndex>=list.length)flashIndex=0;
-  const q=list[flashIndex];
+  if(!sess.order.length){host.innerHTML="<p class='muted'>No flash cards for today's queue.</p>";return}
+  const q=list.find(x=>x.id===sess.order[sess.cursor])||list[0];
   const ans=q.answerIndex>=0&&q.choices[q.answerIndex]?q.choices[q.answerIndex]:(q.answerText||"");
-  host.innerHTML=`<div id="flashCardBody" class="card primary flash-card"><div class="flash-timer">Auto next in <span id="flashTimer">${flashRemaining}s</span>${flashPaused?" (paused)":""}</div><div class="muted">Card ${flashIndex+1}/${list.length} · #${escHtml(q.slNo)} · ${escHtml(q.difficulty)}</div><h3>${escHtml(q.question)}</h3><div><b>Answer:</b> ${escHtml(ans)}</div><div class="muted">${q.notes?`Notes: ${escHtml(q.notes)}`:"No notes"}</div><div class="quiz-actions"><button id="flashPrevBtn" type="button" class="alt">Previous</button><button id="flashNextBtn" type="button" class="alt">Next</button></div></div>`;
-  document.getElementById("flashPrevBtn").onclick=flashPrev;
-  document.getElementById("flashNextBtn").onclick=flashNext;
+  const status=flashStarted?`Auto next in <span id="flashTimer">${flashRemaining}s</span>${flashPaused?" (paused)":""}`:"Press Start to begin";
+  host.innerHTML=`<div id="flashCardBody" class="card primary flash-card"><div class="flash-timer">${status}</div><div class="muted">Today ${sess.cursor+1}/${sess.order.length} · #${escHtml(q.slNo)} · ${escHtml(q.difficulty)} · Pass ${q.pass||0} · Fail ${q.fail||0}</div><h3>${escHtml(q.question)}</h3><div><b>Answer:</b> ${escHtml(ans)}</div><div class="muted">${q.notes?`Notes: ${escHtml(q.notes)}`:"No notes"}</div><div class="muted">Swipe left/right to move cards. Hold card to pause timer.</div></div>`;
   const card=document.getElementById("flashCardBody");
   if(card){
     card.onpointerdown=e=>{flashPaused=true;flashSwipeStartX=e.clientX;};
@@ -587,7 +652,7 @@ function renderFlashCard(){
     card.onpointercancel=()=>{flashPaused=false;flashSwipeStartX=null};
     card.onpointerleave=()=>{flashPaused=false;flashSwipeStartX=null};
   }
-  startFlashCountdown();
+  if(flashStarted)startFlashCountdown(); else stopFlashCountdown();
 }
 function maybeRescheduleFailed(questionId,list){
   if(!list.length)return;
@@ -737,8 +802,12 @@ async function importQuizSheet(){
     saveQuiz(parsed);
     quizCursor=0;
     localStorage.removeItem(QUIZSESSIONKEY);
+    localStorage.removeItem(FLASHSESSIONKEY);
+    flashStarted=false;flashPaused=false;flashSeenSec=0;flashRemaining=loadQuizSettings().flashShowSec;
     renderQuizDifficulty();
     renderQuiz();
+    renderFlashDifficultyOptions();
+    renderFlashCard();
     document.getElementById("quizMsg").innerHTML=`<div class="ok">✓ Imported ${parsed.length} quiz questions.</div>`;
   }catch{
     document.getElementById("quizMsg").innerHTML="<div class='muted'>Could not read file.</div>";
@@ -781,6 +850,7 @@ function submitQuizAnswer(){
   const feedbackWrap=document.getElementById("quizFeedback");
   if(feedbackWrap)feedbackWrap.scrollIntoView({behavior:"smooth",block:"start"});
   if(!correct)maybeRescheduleFailed(q.id,filtered);
+  localStorage.removeItem(FLASHSESSIONKEY);
   renderQuizDifficulty();
   const all2=loadQuiz();const pass2=all2.reduce((s,x)=>s+x.pass,0),fail2=all2.reduce((s,x)=>s+x.fail,0);
   document.getElementById("quizSummary").innerHTML=`<div class="stat"><b>${all2.length}</b>questions</div><div class="stat"><b>${pass2}</b>pass</div><div class="stat"><b>${fail2}</b>fail</div>`;
@@ -809,9 +879,13 @@ function clearQuizData(){
   if(!confirm("Delete all quiz questions and pass/fail tracking?"))return;
   saveQuiz([]);
   localStorage.removeItem(QUIZSESSIONKEY);
+  localStorage.removeItem(FLASHSESSIONKEY);
   quizCursor=0;
+  flashStarted=false;flashPaused=false;flashSeenSec=0;flashRemaining=loadQuizSettings().flashShowSec;
   renderQuizDifficulty();
   renderQuiz();
+  renderFlashDifficultyOptions();
+  renderFlashCard();
   document.getElementById("quizMsg").innerHTML="<div class='ok'>✓ Quiz data cleared.</div>";
 }
 function migrateWorkouts(raw){
@@ -867,7 +941,7 @@ function setActiveView(view,opts={}){
     const panel=document.getElementById("settingsPanel"),backdrop=document.getElementById("panelBackdrop");
     panel.classList.remove("open");backdrop.classList.remove("show");panel.setAttribute("aria-hidden","true");
   }
-  if(isFlash){renderFlashDifficultyOptions();renderFlashCard()}else stopFlashCountdown();
+  if(isFlash){renderFlashDifficultyOptions();renderFlashCard()}else{finalizeFlashView();stopFlashCountdown();flashPaused=false;flashStarted=false;}
   localStorage.setItem(VIEWKEY,mode);
   if(updateHash){
     const target=`#/${mode}`;
@@ -1307,6 +1381,7 @@ function init(){
   document.getElementById('dateQuiz').textContent=displayDate;
   document.getElementById('dateFlash').textContent=displayDate;
   document.getElementById('quizDailyLimit').value=String(loadQuizSettings().dailyLimit);
+  document.getElementById('flashShowSec').value=String(loadQuizSettings().flashShowSec);
   document.getElementById('dayPick').innerHTML=Object.keys(PROGRAM).map(d=>`<option value="${d}">Day ${d}</option>`).join("");
   document.getElementById('progressDay').innerHTML=Object.keys(PROGRAM).map(d=>`<option value="${d}">Day ${d}</option>`).join("");
   document.getElementById('planDay').innerHTML='<option value="0">None</option>'+Object.keys(PROGRAM).map(d=>`<option value="${d}">Day ${d}</option>`).join("");
@@ -1338,8 +1413,10 @@ function init(){
   document.getElementById("saveQuizLimit").onclick=saveDailyQuizLimit;
   document.getElementById("exportQuizCsv").onclick=exportQuizCsv;
   document.getElementById("clearQuiz").onclick=clearQuizData;
+  document.getElementById("flashStart").onclick=startFlashSession;
+  document.getElementById("flashSaveSettings").onclick=saveFlashTimeSetting;
   document.getElementById("quizDifficulty").onchange=()=>{quizCursor=0;localStorage.removeItem(QUIZSESSIONKEY);renderQuiz();};
-  document.getElementById("flashDifficulty").onchange=()=>{flashIndex=0;flashRemaining=20;renderFlashCard();};
+  document.getElementById("flashDifficulty").onchange=()=>{flashIndex=0;flashRemaining=loadQuizSettings().flashShowSec;flashStarted=false;localStorage.removeItem(FLASHSESSIONKEY);renderFlashCard();};
 
   document.getElementById('dayPick').onchange=()=>{const v=document.getElementById('dayPick').value;document.getElementById('progressDay').value=v;renderProgressExerciseOptions();render();renderSettings();renderExerciseManager();renderProgress()};
   document.getElementById('progressDay').onchange=()=>{renderProgressExerciseOptions();renderProgress()};
@@ -1362,7 +1439,7 @@ function init(){
   document.getElementById('fromDate').onchange=renderProgress;document.getElementById('toDate').onchange=renderProgress;
   document.getElementById('demoData').onclick=()=>{if(confirm("Add 3 weeks of demo data for graph testing?"))addDemoData()};
   document.getElementById('cancelEdit').onclick=()=>{document.getElementById('save').dataset.editId="";document.getElementById('save').textContent='✓ DONE — SAVE WORKOUT';document.getElementById('cancelEdit').style.display='none';document.getElementById('msg').innerHTML='';render()};
-  document.getElementById('clear').onclick=()=>{if(confirm("Delete workout, personal plans, quiz data, defaults, and program setup?")){localStorage.removeItem(DATAKEY);localStorage.removeItem(SETKEY);localStorage.removeItem(PROGRAMKEY);localStorage.removeItem(PLANKEY);localStorage.removeItem(QUIZKEY);workoutsCache=[];location.reload()}};
+  document.getElementById('clear').onclick=()=>{if(confirm("Delete workout, personal plans, quiz data, defaults, and program setup?")){localStorage.removeItem(DATAKEY);localStorage.removeItem(SETKEY);localStorage.removeItem(PROGRAMKEY);localStorage.removeItem(PLANKEY);localStorage.removeItem(QUIZKEY);localStorage.removeItem(QUIZSESSIONKEY);localStorage.removeItem(FLASHSESSIONKEY);localStorage.removeItem(QUIZSETKEY);workoutsCache=[];location.reload()}};
   document.addEventListener("keydown",handleShortcuts);
   if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{})}
   render();renderSettings();renderHistory();renderStats();renderProgress();
