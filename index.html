@@ -84,7 +84,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 </style></head>
 <body>
 <main>
-<section class="card"><div class="viewtabs"><button id="showWorkoutView" class="tabbtn active" type="button">Workout</button><button id="showPlanView" class="tabbtn" type="button">Personal Plan</button></div></section>
+<section class="card"><div class="viewtabs"><button id="showWorkoutView" class="tabbtn active" type="button">Workout</button><button id="showPlanView" class="tabbtn" type="button">Personal Plan</button><button id="showQuizView" class="tabbtn" type="button">Quiz</button></div></section>
 <div id="viewWorkout" class="view active">
 <section class="page-head"><div class="header-top"><h1>Workout Tracker</h1><div class="row" style="margin:0"><button id="settingsPanelOpen" class="alt" type="button">⚙️ Settings</button><button class="themeToggle alt" type="button">☀️ Day</button></div></div><div id="dateWorkout"></div></section>
 <section class="card"><h2 id="dayTitle"></h2><div id="dayMeta" class="muted"></div>
@@ -126,6 +126,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 <div id="planMsg" aria-live="polite"></div>
 </section>
 <section class="card secondary"><h2>Saved Plans</h2><div id="planList"></div></section>
+</div>
+<div id="viewQuiz" class="view">
+<section class="page-head"><div class="header-top"><h1>Quiz</h1><div class="row" style="margin:0"><button class="themeToggle alt" type="button">☀️ Day</button></div></div><div id="dateQuiz"></div></section>
 <section class="card secondary"><h2>Quiz (MCQ)</h2>
 <div class="quiz-grid">
   <label for="quizFile">Import Quiz Sheet (CSV from Excel)<input id="quizFile" type="file" accept=".csv,.tsv,.txt,.xlsx,.xls"></label>
@@ -390,11 +393,12 @@ function renderQuiz(){
   }
   if(quizCursor>=list.length)quizCursor=0;
   const q=list[quizCursor];
-  card.innerHTML=`<div class="card secondary"><h3>Q${quizCursor+1}/${list.length} · #${escHtml(q.slNo)} · ${escHtml(q.difficulty)}</h3><p><b>${escHtml(q.question)}</b></p>${q.choices.map((c,i)=>`<label class="quiz-choice" for="quizChoice${i}"><input id="quizChoice${i}" name="quizChoice" type="radio" value="${i}"><span>${escHtml(c)}</span></label>`).join("")}<div class="quiz-actions"><button id="quizSubmit" type="button">Submit Answer</button></div><div class="muted">Pass: ${q.pass} · Fail: ${q.fail} · Accuracy: ${accuracy}%</div>${q.notes?`<div class="muted">Notes: ${escHtml(q.notes)}</div>`:""}</div>`;
-  const top=[...all].sort((a,b)=>(b.pass+b.fail)-(a.pass+a.fail)).slice(0,12);
-  rows.innerHTML=top.map(qx=>`<div class="history"><b>#${escHtml(qx.slNo)} ${escHtml(qx.question)}</b><br><span class="muted">${escHtml(qx.difficulty)} · Pass ${qx.pass} · Fail ${qx.fail}</span></div>`).join("");
+  card.innerHTML=`<div class="card secondary"><h3>Q${quizCursor+1}/${list.length} · #${escHtml(q.slNo)} · ${escHtml(q.difficulty)}</h3><p><b>${escHtml(q.question)}</b></p>${q.choices.map((c,i)=>`<label class="quiz-choice" for="quizChoice${i}"><input id="quizChoice${i}" name="quizChoice" type="radio" value="${i}"><span>${escHtml(c)}</span></label>`).join("")}<div class="quiz-actions"><button id="quizSubmit" type="button">Submit Answer</button><button id="quizNextInline" type="button" class="alt">Next Question</button></div><div class="muted">Pass: ${q.pass} · Fail: ${q.fail} · Accuracy: ${accuracy}%</div>${q.notes?`<div class="muted">Notes: ${escHtml(q.notes)}</div>`:""}</div>`;
+  rows.innerHTML="";
   const submit=document.getElementById("quizSubmit");
   if(submit)submit.onclick=submitQuizAnswer;
+  const nextInline=document.getElementById("quizNextInline");
+  if(nextInline)nextInline.onclick=nextQuiz;
 }
 function importQuizSheet(){
   const f=document.getElementById("quizFile")?.files?.[0];
@@ -432,7 +436,7 @@ function submitQuizAnswer(){
   if(correct)q.pass+=1;else q.fail+=1;
   saveQuiz(all);
   const right=q.answerIndex>=0?q.choices[q.answerIndex]:(q.answerText||"");
-  document.getElementById("quizMsg").innerHTML=`<div class="${correct?"ok":"muted"}">${correct?"Correct":"Wrong"} · Right answer: ${escHtml(right)}${q.notes?` · ${escHtml(q.notes)}`:""}</div>`;
+  document.getElementById("quizMsg").innerHTML=`<div class="${correct?"ok":"muted"}">${correct?"Correct":"Wrong"} · Right answer: ${escHtml(right)}${q.notes?` · Notes: ${escHtml(q.notes)}`:""} · Pass: ${q.pass} · Fail: ${q.fail}</div>`;
   renderQuiz();
 }
 function nextQuiz(){
@@ -482,16 +486,19 @@ function applyTheme(mode){
 }
 function toggleTheme(){const next=document.body.classList.contains("day")?"night":"day";localStorage.setItem(THEMEKEY,next);applyTheme(next)}
 function setActiveView(view){
-  const workout=view!=="plan";
-  document.getElementById("viewWorkout").classList.toggle("active",workout);
-  document.getElementById("viewPlan").classList.toggle("active",!workout);
-  document.getElementById("showWorkoutView").classList.toggle("active",workout);
-  document.getElementById("showPlanView").classList.toggle("active",!workout);
-  if(!workout){
+  const mode=(view==="plan"||view==="quiz")?view:"workout";
+  const isWorkout=mode==="workout",isPlan=mode==="plan",isQuiz=mode==="quiz";
+  document.getElementById("viewWorkout").classList.toggle("active",isWorkout);
+  document.getElementById("viewPlan").classList.toggle("active",isPlan);
+  document.getElementById("viewQuiz").classList.toggle("active",isQuiz);
+  document.getElementById("showWorkoutView").classList.toggle("active",isWorkout);
+  document.getElementById("showPlanView").classList.toggle("active",isPlan);
+  document.getElementById("showQuizView").classList.toggle("active",isQuiz);
+  if(!isWorkout){
     const panel=document.getElementById("settingsPanel"),backdrop=document.getElementById("panelBackdrop");
     panel.classList.remove("open");backdrop.classList.remove("show");panel.setAttribute("aria-hidden","true");
   }
-  localStorage.setItem(VIEWKEY,workout?"workout":"plan");
+  localStorage.setItem(VIEWKEY,mode);
 }
 
 function adaptive(day,name,fallback){
@@ -923,6 +930,7 @@ function init(){
   const displayDate=new Date().toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"long",day:"numeric"});
   document.getElementById('dateWorkout').textContent=displayDate;
   document.getElementById('datePlan').textContent=displayDate;
+  document.getElementById('dateQuiz').textContent=displayDate;
   document.getElementById('dayPick').innerHTML=Object.keys(PROGRAM).map(d=>`<option value="${d}">Day ${d}</option>`).join("");
   document.getElementById('progressDay').innerHTML=Object.keys(PROGRAM).map(d=>`<option value="${d}">Day ${d}</option>`).join("");
   document.getElementById('planDay').innerHTML='<option value="0">None</option>'+Object.keys(PROGRAM).map(d=>`<option value="${d}">Day ${d}</option>`).join("");
@@ -932,7 +940,7 @@ function init(){
   renderQuizDifficulty();
   renderQuiz();
   clearPlanEditor();
-  setActiveView(localStorage.getItem(VIEWKEY)==="plan"?"plan":"workout");
+  setActiveView(localStorage.getItem(VIEWKEY)||"workout");
 
   function setPanel(open){
     const panel=document.getElementById("settingsPanel"),backdrop=document.getElementById("panelBackdrop");
@@ -943,6 +951,7 @@ function init(){
   document.getElementById("panelBackdrop").onclick=()=>setPanel(false);
   document.getElementById("showWorkoutView").onclick=()=>setActiveView("workout");
   document.getElementById("showPlanView").onclick=()=>setActiveView("plan");
+  document.getElementById("showQuizView").onclick=()=>setActiveView("quiz");
   document.getElementById("savePlan").onclick=savePlanEntry;
   document.getElementById("cancelPlanEdit").onclick=()=>{clearPlanEditor();document.getElementById("planMsg").innerHTML=""};
   document.getElementById("importQuiz").onclick=importQuizSheet;
