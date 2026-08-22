@@ -1,4 +1,4 @@
-const CACHE = "workout-tracker-v28-quiz-answer-roundtrip-fix";
+const CACHE = "workout-tracker-v30-csv-open-compat";
 const ASSETS = ["./", "./index.html", "./manifest.json"];
 
 self.addEventListener("install", (e) => {

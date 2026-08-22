@@ -137,7 +137,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 <section class="page-head"><div class="header-top"><h1>Quiz</h1><div class="row" style="margin:0"><button class="themeToggle alt" type="button">☀️ Day</button></div></div><div id="dateQuiz"></div></section>
 <section class="card secondary"><h2>Quiz (MCQ)</h2>
 <div class="quiz-grid">
-  <label for="quizFile">Import Quiz Sheet (CSV from Excel)<input id="quizFile" type="file" accept=".csv,.tsv,.txt,text/csv,text/plain,application/vnd.ms-excel,application/octet-stream,*/*"></label>
+  <label for="quizFile">Import Quiz Sheet (CSV from Excel)<input id="quizFile" type="file" accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain"></label>
   <label for="quizDifficulty">Difficulty Filter<select id="quizDifficulty"><option value="__all">All levels</option></select></label>
 </div>
 <div class="quiz-actions"><button id="importQuiz" type="button">Import Quiz</button><button id="exportQuizCsv" type="button" class="alt">Export Quiz CSV</button><button id="clearQuiz" type="button" class="alt">Clear Quiz Data</button></div>
@@ -396,9 +396,9 @@ async function exportQuizCsv(){
     const row=[q.slNo,q.question,q.choices[0]||"",q.choices[1]||"",q.choices[2]||"",q.choices[3]||"",answer,q.notes||"",q.difficulty||"",q.pass||0,q.fail||0];
     lines.push(row.map(csvCell).join(","));
   });
-  const csv=lines.join("\n");
+  const csv="\ufeff"+lines.join("\r\n");
   const filename=`quiz_export_${localISO()}.csv`;
-  const blob=new Blob([csv],{type:"text/csv"});
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
   const a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
   a.download=filename;
