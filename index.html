@@ -83,6 +83,7 @@ details>div{margin-top:10px}
 .flash-stage #flashCard,.flash-stage #flashCard *{max-width:100%}
 .flash-page.active.flash-running{display:flex;flex-direction:column;min-height:calc(100vh - 96px)}
 .flash-page.active.flash-running>.card.secondary{display:flex;flex-direction:column;flex:1;min-height:0}
+.flash-page.active.flash-running .flash-setup{display:none}
 .flash-page.active.flash-running .flash-stage{display:flex;flex-direction:column;flex:1;min-height:0}
 .flash-page.active.flash-running #flashCard{display:flex;flex-direction:column;flex:1;min-height:0}
 .flash-page.active.flash-running .flash-card{height:100%;max-height:none}
@@ -173,13 +174,13 @@ input:focus,select:focus,textarea:focus{border-color:var(--focus);box-shadow:0 0
 </div>
 <div id="viewFlash" class="view flash-page">
 <section class="page-head"><div class="header-top"><h1>Flash Cards</h1><div class="row" style="margin:0"><button class="themeToggle alt" type="button">☀️ Day</button></div></div><div id="dateFlash"></div></section>
-<section class="card secondary"><h2>Flash Card Practice</h2>
-<div class="quiz-grid">
+<section class="card secondary"><h2 class="flash-setup">Flash Card Practice</h2>
+<div class="quiz-grid flash-setup">
   <label for="flashDifficulty">Difficulty Filter<select id="flashDifficulty"><option value="__all">All levels</option></select></label>
   <label for="flashShowSec">Flash Card Time (sec)<input id="flashShowSec" type="number" min="5" max="300" value="20"></label>
 </div>
-<div class="quiz-actions"><button id="flashStart" type="button">Start</button><button id="flashSaveSettings" type="button" class="alt">Save Flash Time</button></div>
-<div id="flashMsg" class="muted">Each card auto-advances in 20s. Hold card to pause. Swipe left/right for next/previous.</div>
+<div class="quiz-actions flash-setup"><button id="flashStart" type="button">Start</button><button id="flashSaveSettings" type="button" class="alt">Save Flash Time</button></div>
+<div id="flashMsg" class="muted flash-setup">Each card auto-advances in 20s. Hold card to pause. Swipe left/right for next/previous.</div>
 <div class="flash-stage"><div class="flash-blob b1"></div><div class="flash-blob b2"></div><div id="flashCard"></div></div>
 </section>
 </div>
@@ -651,6 +652,7 @@ function startFlashSession(){
   flashStarted=true;flashPaused=false;flashSeenSec=0;flashRemaining=loadQuizSettings().flashShowSec;
   document.getElementById("viewFlash")?.classList.add("flash-running");
   renderFlashCard();
+  document.getElementById("flashCard")?.scrollIntoView({behavior:"smooth",block:"start"});
 }
 function renderFlashCard(){
   const host=document.getElementById("flashCard");

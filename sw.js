@@ -1,4 +1,4 @@
-const CACHE = "workout-tracker-v42-flash-fill-page-on-start";
+const CACHE = "workout-tracker-v43-flash-focused-start";
 const ASSETS = ["./", "./index.html", "./manifest.json"];
 
 self.addEventListener("install", (e) => {
