@@ -137,7 +137,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 <section class="page-head"><div class="header-top"><h1>Quiz</h1><div class="row" style="margin:0"><button class="themeToggle alt" type="button">☀️ Day</button></div></div><div id="dateQuiz"></div></section>
 <section class="card secondary"><h2>Quiz (MCQ)</h2>
 <div class="quiz-grid">
-  <label for="quizFile">Import Quiz Sheet (CSV from Excel)<input id="quizFile" type="file" accept=".csv,.tsv,.txt,.xlsx,.xls"></label>
+  <label for="quizFile">Import Quiz Sheet (CSV from Excel)<input id="quizFile" type="file" accept=".csv,.tsv,.txt,text/csv,text/plain,application/vnd.ms-excel,application/octet-stream,*/*"></label>
   <label for="quizDifficulty">Difficulty Filter<select id="quizDifficulty"><option value="__all">All levels</option></select></label>
 </div>
 <div class="quiz-actions"><button id="importQuiz" type="button">Import Quiz</button><button id="exportQuizCsv" type="button" class="alt">Export Quiz CSV</button><button id="clearQuiz" type="button" class="alt">Clear Quiz Data</button></div>
@@ -369,6 +369,7 @@ function saveQuiz(questions){
   localStorage.setItem(QUIZKEY,JSON.stringify({schema:SCHEMA,questions}));
 }
 function escHtml(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+function normText(s){return String(s||"").trim().toLowerCase().replace(/\s+/g," ")}
 function csvCell(v){
   const s=String(v??"");
   return /[",\n\r]/.test(s)?`"${s.replace(/"/g,'""')}"`:s;
@@ -396,23 +397,13 @@ async function exportQuizCsv(){
   });
   const csv=lines.join("\n");
   const filename=`quiz_export_${localISO()}.csv`;
-  if(window.showSaveFilePicker){
-    try{
-      const h=await window.showSaveFilePicker({suggestedName:filename,types:[{description:"CSV",accept:{"text/csv":[".csv"]}}]});
-      const w=await h.createWritable();
-      await w.write(csv);
-      await w.close();
-      document.getElementById("quizMsg").innerHTML="<div class='ok'>✓ Quiz CSV exported.</div>";
-      return;
-    }catch(e){if(e?.name==="AbortError")return}
-  }
   const blob=new Blob([csv],{type:"text/csv"});
   const a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
   a.download=filename;
   a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),3000);
-  document.getElementById("quizMsg").innerHTML="<div class='ok'>✓ Quiz CSV downloaded.</div>";
+  document.getElementById("quizMsg").innerHTML="<div class='ok'>✓ Quiz CSV downloaded to your device. Use this file for re-import.</div>";
 }
 function renderQuizEditor(q=null){
   const host=document.getElementById("quizEditor");

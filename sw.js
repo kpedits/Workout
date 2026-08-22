@@ -1,4 +1,4 @@
-const CACHE = "workout-tracker-v26-hash-routes";
+const CACHE = "workout-tracker-v27-android-import-fix";
 const ASSETS = ["./", "./index.html", "./manifest.json"];
 
 self.addEventListener("install", (e) => {
