@@ -44,6 +44,8 @@ details>div{margin-top:10px}
 .legend{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
 .swatch{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
 .editing{margin-top:8px;padding:8px;border-radius:8px;background:var(--surface);font-size:13px}
+.manager-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.manager-list .history{padding:10px 0}
 button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 @media(max-width:920px){
   .setrow{grid-template-columns:1fr 90px}
@@ -65,6 +67,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 <section class="card secondary"><details><summary>⚙️ Editable Default Settings</summary><div><div id="settings"></div>
 <button id="saveSettings">Save Default Settings</button>
 <p class="muted">Defaults are separate from workout history. Rep defaults start at 4, then adapt by +1 every 3 completed sessions and -1 every 2 skipped sessions (per day/exercise).</p></div></details></section>
+
+<section class="card secondary"><details><summary>🧩 Exercise Manager</summary><div id="exerciseManager"></div></details></section>
 
 <section class="card secondary"><h2>Progress</h2><div id="stats" class="stats"></div><div class="filterrow">
 <label class="filter-day" for="progressDay">Day<select id="progressDay"></select></label>
@@ -88,7 +92,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 </main>
 
 <script>
-const PROGRAM={
+const BASE_PROGRAM={
 1:{name:"UPPER V-TAPER & SHOULDERS",rounds:4,rest:90,items:[
 ["Pull-Ups (Overhand)","reps",4,8,"2s pull up → 1s hold at bar → 2s lowering down","Work 30–35s · Active Recovery 45s Skipping · Transition 15s"],
 ["Pike Push-Ups","reps",8,10,"2s lowering head to floor → 1s bottom hold → 2s press up","Work 30–35s · Active Recovery 45s Skipping · Transition 15s"],
@@ -126,9 +130,10 @@ const PROGRAM={
 ["Hydration & Sleep","time",0,0,"Recovery focus","Hydration and sleep"]]}
 };
 
-const DATAKEY="Workout Tracker",SETKEY="Workout Tracker Defaults",THEMEKEY="Workout Tracker Theme";
+const DATAKEY="Workout Tracker",SETKEY="Workout Tracker Defaults",THEMEKEY="Workout Tracker Theme",PROGRAMKEY="Workout Tracker Program";
 const SCHEMA=2;
 let timers={},workoutsCache=null;
+let PROGRAM=null;
 
 function localISO(d=new Date()){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");return `${y}-${m}-${day}`}
 function fmt(s){s=Math.max(0,Math.round(s));return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")}
@@ -136,6 +141,37 @@ function byDate(a,b){return a.date.localeCompare(b.date)}
 function uid(p){return `${p}-${Math.random().toString(36).slice(2,9)}`}
 
 function readJson(key,fallback){try{return JSON.parse(localStorage.getItem(key)||JSON.stringify(fallback))}catch{return fallback}}
+function deepClone(x){return JSON.parse(JSON.stringify(x))}
+function normalizeProgram(raw){
+  const base=deepClone(BASE_PROGRAM),src=(raw&&typeof raw==="object")?raw:{};
+  for(let day=1;day<=7;day++){
+    const s=src[day]||{},b=base[day];
+    b.name=String(s.name||b.name);
+    b.rounds=Math.max(0,+s.rounds||0);
+    b.rest=Math.max(0,+s.rest||0);
+    const items=Array.isArray(s.items)?s.items:[];
+    b.items=items.map(it=>{
+      const name=String(it?.[0]||"New Exercise").trim()||"New Exercise";
+      const kind=(it?.[1]==="time"?"time":"reps");
+      const low=Math.max(0,+it?.[2]||0);
+      const high=Math.max(low,+it?.[3]||low);
+      const tempo=String(it?.[4]||"");
+      const notes=String(it?.[5]||"");
+      return [name,kind,low,high,tempo,notes];
+    });
+  }
+  return base;
+}
+function loadProgram(){
+  const raw=readJson(PROGRAMKEY,null);
+  const program=normalizeProgram(raw?.program||raw);
+  localStorage.setItem(PROGRAMKEY,JSON.stringify({schema:SCHEMA,program}));
+  return program;
+}
+function saveProgram(program){
+  PROGRAM=normalizeProgram(program);
+  localStorage.setItem(PROGRAMKEY,JSON.stringify({schema:SCHEMA,program:PROGRAM}));
+}
 function migrateWorkouts(raw){
   if(Array.isArray(raw)) return {schema:SCHEMA,workouts:raw};
   if(raw&&Array.isArray(raw.workouts)) return {schema:SCHEMA,workouts:raw.workouts};
@@ -198,6 +234,109 @@ function saveDefaultSettings(){
   d.activeRecovery=Math.max(1,+document.getElementById("activeRecovery").value||1);
   d.autoDoneTimer=!!document.getElementById("autoDoneTimer").checked;
   saveDefaults(d);render();renderSettings();document.getElementById('msg').innerHTML='<div class="ok">✓ Default settings saved.</div>';
+}
+function onProgramChanged(){
+  render();
+  renderSettings();
+  renderExerciseManager();
+  renderProgressExerciseOptions();
+  populateHistoryFilters();
+  renderHistory();
+  renderProgress();
+}
+function renderExerciseManager(){
+  const day=+document.getElementById('dayPick').value,p=PROGRAM[day];
+  const copyOptions=Object.keys(PROGRAM).map(d=>`<option value="${d}" ${+d===day?"disabled":""}>Day ${d}: ${PROGRAM[d].name}</option>`).join("");
+  const list=p.items.length?p.items.map((it,i)=>`<div class="history"><b>${it[0]}</b> <span class="muted">(${it[1]==="reps"?"reps":"time"}) ${it[2]}${it[1]==="reps"?"–"+it[3]:" sec"}</span><div class="row"><button class="alt" onclick="editProgramExercise(${i})">Edit</button><button class="alt" onclick="deleteProgramExercise(${i})">Delete</button></div></div>`).join(""):"<p class='muted'>No exercises for this day.</p>";
+  document.getElementById("exerciseManager").innerHTML=`
+  <div class="manager-grid">
+    <label for="exDayName">Day Name<input id="exDayName" value="${p.name.replace(/"/g,"&quot;")}"></label>
+    <label for="exDayRounds">Rounds<input id="exDayRounds" type="number" min="0" value="${p.rounds}"></label>
+    <label for="exDayRest">Round Rest (sec)<input id="exDayRest" type="number" min="0" value="${p.rest}"></label>
+    <label for="exCopyFrom">Auto add from Day<select id="exCopyFrom">${copyOptions}</select></label>
+  </div>
+  <div class="row"><button onclick="saveDayProgramMeta()">Save Day Config</button><button class="alt" onclick="copyDayProgram()">Copy Day Exercises</button></div>
+  <hr style="border-color:var(--line);border-width:1px 0 0">
+  <div class="manager-grid">
+    <input id="exEditIndex" type="hidden" value="">
+    <label for="exName">Exercise Name<input id="exName" placeholder="e.g., Incline Push-Ups"></label>
+    <label for="exKind">Type<select id="exKind" onchange="syncExerciseKindInputs()"><option value="reps">Reps</option><option value="time">Time</option></select></label>
+    <label for="exMin" id="exMinLabel">Min Reps<input id="exMin" type="number" min="0" value="8"></label>
+    <label for="exMax" id="exMaxLabel">Max Reps<input id="exMax" type="number" min="0" value="12"></label>
+    <label for="exTempo">Tempo / Guidance<input id="exTempo" placeholder="2s down → 1s hold → 2s up"></label>
+    <label for="exNotes">Notes<input id="exNotes" placeholder="Work/rest guidance"></label>
+  </div>
+  <div class="row"><button id="exSubmit" onclick="upsertProgramExercise()">Add Exercise</button><button class="alt" onclick="cancelProgramExerciseEdit()">Cancel</button></div>
+  <div class="manager-list">${list}</div>`;
+  syncExerciseKindInputs();
+}
+function syncExerciseKindInputs(){
+  const kind=document.getElementById("exKind")?.value||"reps";
+  const minLabel=document.getElementById("exMinLabel"),maxLabel=document.getElementById("exMaxLabel"),maxInput=document.getElementById("exMax");
+  if(!minLabel||!maxLabel||!maxInput)return;
+  minLabel.firstChild.textContent=kind==="reps"?"Min Reps":"Seconds";
+  maxLabel.style.display=kind==="reps"?"block":"none";
+  if(kind==="time")maxInput.value=document.getElementById("exMin").value||maxInput.value;
+}
+function saveDayProgramMeta(){
+  const day=+document.getElementById("dayPick").value,p=PROGRAM[day];
+  p.name=(document.getElementById("exDayName").value||p.name).trim()||p.name;
+  p.rounds=Math.max(0,+document.getElementById("exDayRounds").value||0);
+  p.rest=Math.max(0,+document.getElementById("exDayRest").value||0);
+  saveProgram(PROGRAM);onProgramChanged();
+  document.getElementById('msg').innerHTML='<div class="ok">✓ Day configuration updated.</div>';
+}
+function copyDayProgram(){
+  const day=+document.getElementById("dayPick").value,from=+document.getElementById("exCopyFrom").value;
+  if(!PROGRAM[from]||from===day)return;
+  PROGRAM[day].items=deepClone(PROGRAM[from].items);
+  saveProgram(PROGRAM);onProgramChanged();
+  document.getElementById('msg').innerHTML=`<div class="ok">✓ Copied exercises from Day ${from} to Day ${day}.</div>`;
+}
+function editProgramExercise(idx){
+  const day=+document.getElementById("dayPick").value,it=PROGRAM[day].items[idx];if(!it)return;
+  document.getElementById("exEditIndex").value=idx;
+  document.getElementById("exName").value=it[0];
+  document.getElementById("exKind").value=it[1];
+  document.getElementById("exMin").value=it[2];
+  document.getElementById("exMax").value=it[3];
+  document.getElementById("exTempo").value=it[4]||"";
+  document.getElementById("exNotes").value=it[5]||"";
+  document.getElementById("exSubmit").textContent="Update Exercise";
+  syncExerciseKindInputs();
+}
+function cancelProgramExerciseEdit(){
+  document.getElementById("exEditIndex").value="";
+  document.getElementById("exName").value="";
+  document.getElementById("exKind").value="reps";
+  document.getElementById("exMin").value="8";
+  document.getElementById("exMax").value="12";
+  document.getElementById("exTempo").value="";
+  document.getElementById("exNotes").value="";
+  document.getElementById("exSubmit").textContent="Add Exercise";
+  syncExerciseKindInputs();
+}
+function upsertProgramExercise(){
+  const day=+document.getElementById("dayPick").value,items=PROGRAM[day].items;
+  const idxStr=document.getElementById("exEditIndex").value,name=(document.getElementById("exName").value||"").trim();
+  if(!name){alert("Exercise name is required.");return}
+  const kind=document.getElementById("exKind").value==="time"?"time":"reps";
+  const min=Math.max(0,+document.getElementById("exMin").value||0);
+  const max=kind==="reps"?Math.max(min,+document.getElementById("exMax").value||min):min;
+  const tempo=(document.getElementById("exTempo").value||"").trim();
+  const notes=(document.getElementById("exNotes").value||"").trim();
+  const item=[name,kind,min,max,tempo,notes];
+  if(idxStr==="")items.push(item); else items[+idxStr]=item;
+  saveProgram(PROGRAM);onProgramChanged();cancelProgramExerciseEdit();
+  document.getElementById('msg').innerHTML=`<div class="ok">✓ ${idxStr===""?"Added":"Updated"} exercise for Day ${day}.</div>`;
+}
+function deleteProgramExercise(idx){
+  const day=+document.getElementById("dayPick").value,items=PROGRAM[day].items;
+  if(!items[idx])return;
+  if(!confirm(`Delete "${items[idx][0]}" from Day ${day}?`))return;
+  items.splice(idx,1);
+  saveProgram(PROGRAM);onProgramChanged();cancelProgramExerciseEdit();
+  document.getElementById('msg').innerHTML='<div class="ok">✓ Exercise removed.</div>';
 }
 
 function render(){
@@ -346,6 +485,7 @@ function runSmokeTests(){
   const before=load().length;addDemoData();const after=load().length;pass("demo data adds entries",after>=before);
   renderProgressExerciseOptions();pass("progress exercise options",document.getElementById("progressExercise").options.length>1);
   const prev=document.getElementById("progressScale").value;document.getElementById("progressScale").value="absolute";renderProgress();pass("progress absolute mode render",document.getElementById("progress").innerHTML.includes("Scale mode: absolute"));document.getElementById("progressScale").value=prev;renderProgress();
+  const beforeItems=(PROGRAM[1]?.items||[]).length;PROGRAM[1].items.push(["Smoke Test Exercise","reps",5,8,"","",""]);saveProgram(PROGRAM);pass("program add exercise",PROGRAM[1].items.length===beforeItems+1);PROGRAM[1].items.pop();saveProgram(PROGRAM);renderExerciseManager();
   document.getElementById("msg").innerHTML=`<div class="ok">Smoke tests complete.<br>${logs.join("<br>")}</div>`;
 }
 
@@ -360,14 +500,15 @@ function handleShortcuts(e){
 }
 
 function init(){
+  PROGRAM=loadProgram();
   applyTheme(localStorage.getItem(THEMEKEY)||"night");document.getElementById('themeToggle').onclick=toggleTheme;
   document.getElementById('date').textContent=new Date().toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"long",day:"numeric"});
   document.getElementById('dayPick').innerHTML=Object.keys(PROGRAM).map(d=>`<option value="${d}">Day ${d}</option>`).join("");
   document.getElementById('progressDay').innerHTML=Object.keys(PROGRAM).map(d=>`<option value="${d}">Day ${d}</option>`).join("");
   const dow=new Date().getDay(),todayDay=dow===0?7:dow;document.getElementById('dayPick').value=todayDay;document.getElementById('progressDay').value=todayDay;
-  renderProgressExerciseOptions();populateHistoryFilters();
+  renderProgressExerciseOptions();populateHistoryFilters();renderExerciseManager();
 
-  document.getElementById('dayPick').onchange=()=>{const v=document.getElementById('dayPick').value;document.getElementById('progressDay').value=v;renderProgressExerciseOptions();render();renderSettings();renderProgress()};
+  document.getElementById('dayPick').onchange=()=>{const v=document.getElementById('dayPick').value;document.getElementById('progressDay').value=v;renderProgressExerciseOptions();render();renderSettings();renderExerciseManager();renderProgress()};
   document.getElementById('progressDay').onchange=()=>{renderProgressExerciseOptions();renderProgress()};
   document.getElementById('progressExercise').onchange=renderProgress;document.getElementById('progressScale').onchange=renderProgress;
   document.getElementById('saveSettings').onclick=saveDefaultSettings;document.getElementById('save').onclick=saveWorkout;
@@ -376,19 +517,19 @@ function init(){
 
   document.getElementById('export').onclick=async()=>{
     const now=new Date(),dd=String(now.getDate()).padStart(2,"0"),mm=String(now.getMonth()+1).padStart(2,"0"),yyyy=now.getFullYear(),day=+document.getElementById('dayPick').value,filename=`Workout_Day${day}_${dd}_${mm}_${yyyy}.json`;
-    const payload=JSON.stringify({schema:SCHEMA,workouts:load(),defaults:defaults()},null,2),msg=document.getElementById('msg');
+    const payload=JSON.stringify({schema:SCHEMA,workouts:load(),defaults:defaults(),program:PROGRAM},null,2),msg=document.getElementById('msg');
     if(window.showSaveFilePicker){try{const h=await window.showSaveFilePicker({suggestedName:filename,types:[{description:"JSON",accept:{"application/json":[".json"]}}]}),w=await h.createWritable();await w.write(payload);await w.close();msg.innerHTML='<div class="ok">✓ Exported using save picker.</div>';return}catch(e){if(e?.name==="AbortError")return}}
     const b=new Blob([payload],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);msg.innerHTML='<div class="muted">Save picker not supported here. File downloaded using browser fallback.</div>';
   };
 
   document.getElementById('import').onclick=()=>document.getElementById('file').click();
-  document.getElementById('file').onchange=async e=>{try{const f=e.target.files?.[0];if(!f)return;const x=JSON.parse(await f.text());const migrated=migrateWorkouts(Array.isArray(x)?x:(x.workouts||[]));store(migrated.workouts);if(x.defaults)localStorage.setItem(SETKEY,JSON.stringify({...x.defaults,schema:SCHEMA}));alert("Imported");location.reload()}catch{alert("Invalid backup")}};
+  document.getElementById('file').onchange=async e=>{try{const f=e.target.files?.[0];if(!f)return;const x=JSON.parse(await f.text());const migrated=migrateWorkouts(Array.isArray(x)?x:(x.workouts||[]));store(migrated.workouts);if(x.defaults)localStorage.setItem(SETKEY,JSON.stringify({...x.defaults,schema:SCHEMA}));if(x.program)saveProgram(x.program);alert("Imported");location.reload()}catch{alert("Invalid backup")}};
 
   const now=new Date(),fromDefault=new Date(now);fromDefault.setMonth(fromDefault.getMonth()-1);document.getElementById('fromDate').value=localISO(fromDefault);document.getElementById('toDate').value=localISO(now);document.getElementById('historyFrom').value=localISO(fromDefault);document.getElementById('historyTo').value=localISO(now);
   document.getElementById('fromDate').onchange=renderProgress;document.getElementById('toDate').onchange=renderProgress;
   document.getElementById('demoData').onclick=()=>{if(confirm("Add 3 weeks of demo data for graph testing?"))addDemoData()};
   document.getElementById('cancelEdit').onclick=()=>{document.getElementById('save').dataset.editId="";document.getElementById('save').textContent='✓ DONE — SAVE WORKOUT';document.getElementById('cancelEdit').style.display='none';document.getElementById('msg').innerHTML='';render()};
-  document.getElementById('clear').onclick=()=>{if(confirm("Delete all workout history and settings?")){localStorage.removeItem(DATAKEY);localStorage.removeItem(SETKEY);workoutsCache=[];location.reload()}};
+  document.getElementById('clear').onclick=()=>{if(confirm("Delete all workout history, defaults, and program setup?")){localStorage.removeItem(DATAKEY);localStorage.removeItem(SETKEY);localStorage.removeItem(PROGRAMKEY);workoutsCache=[];location.reload()}};
   document.addEventListener("keydown",handleShortcuts);
   if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{})}
   render();renderSettings();renderHistory();renderStats();renderProgress();

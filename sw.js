@@ -1,4 +1,4 @@
-const CACHE = "workout-tracker-v10-full-improvements";
+const CACHE = "workout-tracker-v11-exercise-manager";
 const ASSETS = ["./", "./index.html", "./manifest.json"];
 
 self.addEventListener("install", (e) => {
