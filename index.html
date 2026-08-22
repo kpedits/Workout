@@ -501,12 +501,12 @@ function renderQuiz(){
   }
   if(quizCursor>=list.length)quizCursor=0;
   const q=list[quizCursor];
-  card.innerHTML=`<div class="card secondary"><h3>Q${quizCursor+1}/${list.length} · #${escHtml(q.slNo)} · ${escHtml(q.difficulty)}</h3><p><b>${escHtml(q.question)}</b></p>${q.choices.map((c,i)=>`<label class="quiz-choice" id="quizChoiceLabel${i}" for="quizChoice${i}"><input id="quizChoice${i}" name="quizChoice" type="radio" value="${i}"><span>${escHtml(c)}</span></label>`).join("")}<div class="quiz-actions"><button id="quizSubmit" type="button">Submit Answer</button><button id="editQuizCurrent" type="button" class="alt">Edit Question</button></div><div class="muted">Pass: ${q.pass} · Fail: ${q.fail} · Accuracy: ${accuracy}%</div></div>`;
+  card.innerHTML=`<div class="card secondary"><h3>Q${quizCursor+1}/${list.length} · #${escHtml(q.slNo)} · ${escHtml(q.difficulty)}</h3><p><b>${escHtml(q.question)}</b></p>${q.choices.map((c,i)=>`<label class="quiz-choice" id="quizChoiceLabel${i}" for="quizChoice${i}"><input id="quizChoice${i}" name="quizChoice" type="radio" value="${i}"><span>${escHtml(c)}</span></label>`).join("")}<div class="quiz-actions"><button id="quizSubmit" type="button">Submit Answer</button><button id="quizNextInline" type="button" class="alt">Next Question</button></div><div class="muted">Pass: ${q.pass} · Fail: ${q.fail} · Accuracy: ${accuracy}%</div></div>`;
   rows.innerHTML="";
   const submit=document.getElementById("quizSubmit");
   if(submit)submit.onclick=submitQuizAnswer;
-  const editBtn=document.getElementById("editQuizCurrent");
-  if(editBtn)editBtn.onclick=startQuizEdit;
+  const nextBtn=document.getElementById("quizNextInline");
+  if(nextBtn)nextBtn.onclick=nextQuiz;
 }
 function importQuizSheet(){
   const f=document.getElementById("quizFile")?.files?.[0];
@@ -555,11 +555,11 @@ function submitQuizAnswer(){
   if(submitBtn)submitBtn.disabled=true;
   const right=q.answerIndex>=0?q.choices[q.answerIndex]:(q.answerText||"");
   document.getElementById("quizMsg").innerHTML=`<div class="${correct?"ok":"muted"}">${correct?"Correct":"Wrong"}</div>`;
-  document.getElementById("quizFeedback").innerHTML=`<div class="card secondary"><div class="muted">Right answer: ${escHtml(right)}</div><div class="muted">Pass: ${q.pass} · Fail: ${q.fail}</div>${q.notes?`<div class="muted">Notes: ${escHtml(q.notes)}</div>`:""}<div class="quiz-actions"><button id="quizNextAfterSubmit" type="button" class="alt">Next Question</button></div></div>`;
-  const nextBtn=document.getElementById("quizNextAfterSubmit");
-  if(nextBtn){
-    nextBtn.onclick=nextQuiz;
-    nextBtn.focus();
+  document.getElementById("quizFeedback").innerHTML=`<div class="card secondary"><div class="muted">Right answer: ${escHtml(right)}</div><div class="muted">Pass: ${q.pass} · Fail: ${q.fail}</div>${q.notes?`<div class="muted">Notes: ${escHtml(q.notes)}</div>`:""}<div class="quiz-actions"><button id="editQuizAfterSubmit" type="button" class="alt">Edit Question</button></div></div>`;
+  const editBtn=document.getElementById("editQuizAfterSubmit");
+  if(editBtn){
+    editBtn.onclick=startQuizEdit;
+    editBtn.focus();
   }
   const feedbackWrap=document.getElementById("quizFeedback");
   if(feedbackWrap)feedbackWrap.scrollIntoView({behavior:"smooth",block:"start"});
