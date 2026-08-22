@@ -1,4 +1,4 @@
-const CACHE = "workout-tracker-v15-reps-sets-mobile-fix";
+const CACHE = "workout-tracker-v16-personal-plan-view";
 const ASSETS = ["./", "./index.html", "./manifest.json"];
 
 self.addEventListener("install", (e) => {

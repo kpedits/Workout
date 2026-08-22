@@ -15,7 +15,7 @@ header{background:var(--header);color:#fff;padding:18px}main{max-width:920px;mar
 .card.secondary{opacity:.98}
 .exercise{border-top:1px solid var(--line);padding:15px 0}.exercise:first-child{border:0}
 h1,h2,h3{margin:0 0 8px}.muted{color:var(--muted);font-size:13px}
-input,select{width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--inputBorder);border-radius:9px;font:inherit;margin-top:4px;background:var(--inputBg);color:var(--text)}
+input,select,textarea{width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--inputBorder);border-radius:9px;font:inherit;margin-top:4px;background:var(--inputBg);color:var(--text)}
 button{padding:10px 12px;border:0;border-radius:10px;background:var(--btn);color:var(--btnText);font-weight:600}
 button.alt{background:var(--btnAlt);color:var(--btnAltText)}
 #themeToggle{width:auto;padding:8px 10px;font-size:14px}
@@ -49,6 +49,15 @@ details>div{margin-top:10px}
 .editing{margin-top:8px;padding:8px;border-radius:8px;background:var(--surface);font-size:13px}
 .manager-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .manager-list .history{padding:10px 0}
+.viewtabs{display:flex;gap:8px;margin:0 0 12px}
+.tabbtn{flex:1;background:var(--btnAlt);color:var(--btnAltText);border:1px solid var(--line)}
+.tabbtn.active{background:var(--btn);color:var(--btnText);border-color:transparent}
+.view{display:none}
+.view.active{display:block}
+.plan-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.plan-actions{display:flex;gap:8px;flex-wrap:wrap}
+.plan-actions button{flex:1}
+#planNotes{min-height:120px;resize:vertical}
 .sidepanel{position:fixed;top:0;right:0;height:100vh;width:min(520px,92vw);background:var(--card);border-left:1px solid var(--line);box-shadow:-8px 0 24px #0006;transform:translateX(100%);transition:transform .22s ease;z-index:40;display:flex;flex-direction:column}
 .sidepanel.open{transform:translateX(0)}
 .sidepanel-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 14px 10px;border-bottom:1px solid var(--line)}
@@ -63,11 +72,14 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
   #save,#cancelEdit{width:100%}
   .filterrow,.historyfilter{grid-template-columns:1fr 1fr}
   .filter-day,.filter-exercise,.historyfilter label:first-child{grid-column:1/-1}
+  .plan-grid{grid-template-columns:1fr}
 }
 </style></head>
 <body>
 <header><div class="header-top"><h1>Workout Tracker</h1><div class="row" style="margin:0"><button id="settingsPanelOpen" class="alt" type="button">⚙️ Settings</button><button id="themeToggle" class="alt" type="button">☀️ Day</button></div></div><div id="date"></div></header>
 <main>
+<section class="card"><div class="viewtabs"><button id="showWorkoutView" class="tabbtn active" type="button">Workout</button><button id="showPlanView" class="tabbtn" type="button">Personal Plan</button></div><div class="muted">Switch between your workout tracker and personal plan page.</div></section>
+<div id="viewWorkout" class="view active">
 <section class="card"><h2 id="dayTitle"></h2><div id="dayMeta" class="muted"></div>
 <label for="dayPick" class="muted">Workout Day</label><select id="dayPick"></select></section>
 
@@ -93,6 +105,20 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 
 <section class="card secondary"><details><summary>Data</summary><div><div class="row"><button id="export">Export</button><button id="import" class="alt">Import</button><button id="demoData" class="alt">Add 3 Weeks Demo</button><button id="smoke" class="alt">Run Smoke Test</button><button id="clear" class="alt">Clear</button></div>
 <input id="file" type="file" accept="application/json" hidden><p class="muted">Results stay in this browser.</p></div></details></section>
+</div>
+<div id="viewPlan" class="view">
+<section class="card primary"><h2>Personal Plan</h2>
+<div class="plan-grid">
+  <label for="planTitle">Plan Title<input id="planTitle" placeholder="e.g., Recovery Week Plan"></label>
+  <label for="planDay">Linked Workout Day (optional)<select id="planDay"><option value="0">None</option></select></label>
+</div>
+<label for="planNotes">Plan Details / Checklist</label><textarea id="planNotes" placeholder="Add your personal routine, goals, reminders, nutrition notes, or schedule details."></textarea>
+<input id="planEditId" type="hidden" value="">
+<div class="plan-actions"><button id="savePlan" type="button">Save Plan</button><button id="cancelPlanEdit" type="button" class="alt">Cancel Edit</button></div>
+<div id="planMsg" aria-live="polite"></div>
+</section>
+<section class="card secondary"><h2>Saved Plans</h2><div id="planList"></div></section>
+</div>
 </main>
 <div id="panelBackdrop" class="panelbackdrop"></div>
 <aside id="settingsPanel" class="sidepanel" aria-hidden="true">
@@ -100,7 +126,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
   <div class="sidepanel-body">
     <section class="card secondary"><h3>Editable Default Settings</h3><div id="settings"></div>
     <button id="saveSettings">Save Default Settings</button>
-    <p class="muted">Defaults are separate from workout history. Rep defaults start at 4, then adapt by +1 every 3 completed sessions and -1 every 2 skipped sessions (per day/exercise).</p></section>
+    <p class="muted">Defaults are separate from workout history. Rep defaults start at 4, then adapt by +1 every 2 completed sessions and -1 every 2 skipped sessions (per day/exercise).</p></section>
     <section class="card secondary"><h3>Exercise Manager</h3><div id="exerciseManager"></div></section>
   </div>
 </aside>
@@ -144,7 +170,7 @@ const BASE_PROGRAM={
 ["Hydration & Sleep","hold",0,0,"Recovery focus","Hydration and sleep"]]}
 };
 
-const DATAKEY="Workout Tracker",SETKEY="Workout Tracker Defaults",THEMEKEY="Workout Tracker Theme",PROGRAMKEY="Workout Tracker Program";
+const DATAKEY="Workout Tracker",SETKEY="Workout Tracker Defaults",THEMEKEY="Workout Tracker Theme",PROGRAMKEY="Workout Tracker Program",PLANKEY="Workout Tracker Personal Plans",VIEWKEY="Workout Tracker Active View";
 const SCHEMA=2;
 let timers={},workoutsCache=null;
 let PROGRAM=null;
@@ -213,6 +239,20 @@ function saveProgram(program){
   PROGRAM=normalizeProgram(program);
   localStorage.setItem(PROGRAMKEY,JSON.stringify({schema:SCHEMA,program:PROGRAM}));
 }
+function loadPlans(){
+  const raw=readJson(PLANKEY,{schema:SCHEMA,plans:[]});
+  const plans=Array.isArray(raw)?raw:Array.isArray(raw.plans)?raw.plans:[];
+  return plans.map(p=>({
+    id:String(p?.id||uid("plan")),
+    title:String(p?.title||"Untitled Plan").trim()||"Untitled Plan",
+    notes:String(p?.notes||""),
+    day:Math.max(0,Math.min(7,+p?.day||0)),
+    updatedAt:String(p?.updatedAt||new Date().toISOString())
+  }));
+}
+function savePlans(plans){
+  localStorage.setItem(PLANKEY,JSON.stringify({schema:SCHEMA,plans}));
+}
 function migrateWorkouts(raw){
   if(Array.isArray(raw)) return {schema:SCHEMA,workouts:raw};
   if(raw&&Array.isArray(raw.workouts)) return {schema:SCHEMA,workouts:raw.workouts};
@@ -240,6 +280,14 @@ function defaults(){
 function saveDefaults(d){localStorage.setItem(SETKEY,JSON.stringify({...d,schema:SCHEMA}))}
 function applyTheme(mode){document.body.classList.toggle("day",mode==="day");const b=document.getElementById("themeToggle");if(b)b.textContent=mode==="day"?"🌙 Night":"☀️ Day";const m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",mode==="day"?"#111827":"#020617")}
 function toggleTheme(){const next=document.body.classList.contains("day")?"night":"day";localStorage.setItem(THEMEKEY,next);applyTheme(next)}
+function setActiveView(view){
+  const workout=view!=="plan";
+  document.getElementById("viewWorkout").classList.toggle("active",workout);
+  document.getElementById("viewPlan").classList.toggle("active",!workout);
+  document.getElementById("showWorkoutView").classList.toggle("active",workout);
+  document.getElementById("showPlanView").classList.toggle("active",!workout);
+  localStorage.setItem(VIEWKEY,workout?"workout":"plan");
+}
 
 function adaptive(day,name,fallback){
   const list=load().filter(x=>x.day===day).sort(byDate).map(x=>x.exercises?.[name]).filter(Boolean);
@@ -435,6 +483,50 @@ function deleteProgramExercise(idx){
   saveProgram(PROGRAM);onProgramChanged();cancelProgramExerciseEdit();
   document.getElementById('msg').innerHTML='<div class="ok">✓ Exercise removed.</div>';
 }
+function clearPlanEditor(){
+  document.getElementById("planEditId").value="";
+  document.getElementById("planTitle").value="";
+  document.getElementById("planNotes").value="";
+  document.getElementById("planDay").value="0";
+  document.getElementById("savePlan").textContent="Save Plan";
+}
+function renderPlans(){
+  const plans=loadPlans().sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));
+  const html=plans.length?plans.map(p=>`<div class="history"><b>${p.title}</b> <span class="muted">${p.day?`Day ${p.day}`:"No day link"} · Updated ${new Date(p.updatedAt).toLocaleString()}</span><br>${p.notes?String(p.notes).replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>"):"<span class='muted'>No notes</span>"}<div class="row"><button class="alt" type="button" onclick="editPlan('${p.id}')">Edit</button><button class="alt" type="button" onclick="deletePlan('${p.id}')">Delete</button></div></div>`).join(""):"<p class='muted'>No personal plans yet.</p>";
+  document.getElementById("planList").innerHTML=html;
+}
+function savePlanEntry(){
+  const title=(document.getElementById("planTitle").value||"").trim();
+  if(!title){document.getElementById("planMsg").innerHTML='<div class="muted">Plan title is required.</div>';return}
+  const notes=(document.getElementById("planNotes").value||"").trim();
+  const day=Math.max(0,Math.min(7,+document.getElementById("planDay").value||0));
+  const editId=document.getElementById("planEditId").value;
+  const plans=loadPlans();
+  const payload={id:editId||uid("plan"),title,notes,day,updatedAt:new Date().toISOString()};
+  const next=editId?plans.map(p=>p.id===editId?payload:p):plans.concat(payload);
+  savePlans(next);
+  clearPlanEditor();
+  renderPlans();
+  document.getElementById("planMsg").innerHTML=`<div class="ok">✓ ${editId?"Updated":"Saved"} personal plan.</div>`;
+}
+function editPlan(id){
+  const plan=loadPlans().find(p=>p.id===id);
+  if(!plan)return;
+  document.getElementById("planEditId").value=plan.id;
+  document.getElementById("planTitle").value=plan.title;
+  document.getElementById("planNotes").value=plan.notes;
+  document.getElementById("planDay").value=String(plan.day||0);
+  document.getElementById("savePlan").textContent="Update Plan";
+  document.getElementById("planMsg").innerHTML="<div class='editing'>Editing selected personal plan.</div>";
+  setActiveView("plan");
+}
+function deletePlan(id){
+  if(!confirm("Delete this personal plan?"))return;
+  savePlans(loadPlans().filter(p=>p.id!==id));
+  if(document.getElementById("planEditId").value===id)clearPlanEditor();
+  renderPlans();
+  document.getElementById("planMsg").innerHTML="<div class='ok'>✓ Personal plan deleted.</div>";
+}
 
 function render(){
   const day=+document.getElementById('dayPick').value,p=PROGRAM[day],d=defaults(),date=localISO(),saved=load().find(x=>x.date===date&&x.day===day);
@@ -499,7 +591,7 @@ function saveWorkout(){
   let a=load().filter(x=>!(x.date===date&&x.day===day));a.push(data);store(a);
   const saveBtn=document.getElementById('save'),cancel=document.getElementById('cancelEdit');
   if(editId){saveBtn.dataset.editId="";saveBtn.textContent='✓ DONE — SAVE WORKOUT';cancel.style.display='none';document.getElementById('msg').innerHTML='<div class="ok">✓ Updated selected day entry.</div>'}
-  else document.getElementById('msg').innerHTML='<div class="ok">✓ Saved. Defaults adapt by +1 per 3 completed and -1 per 2 skipped sessions.</div>';
+  else document.getElementById('msg').innerHTML='<div class="ok">✓ Saved. Defaults adapt by +1 per 2 completed and -1 per 2 skipped sessions.</div>';
   render();renderSettings();renderHistory();renderStats();renderProgress();
 }
 function startEdit(date,day){
@@ -516,14 +608,14 @@ function startEdit(date,day){
   document.getElementById('msg').innerHTML=`<div class="editing">Editing ${date} Day ${day}. Update values and press save.</div>`;
   window.scrollTo({top:0,behavior:'smooth'});
 }
-function duplicateEntry(date,day){
-  const rec=load().find(x=>x.date===date&&x.day===day);if(!rec)return;
-  const today=localISO();
-  const clone=JSON.parse(JSON.stringify(rec));
-  clone.date=today;clone.completedAt=new Date().toISOString();
-  let a=load().filter(x=>!(x.date===today&&x.day===day));a.push(clone);store(a);
-  document.getElementById('msg').innerHTML=`<div class="ok">✓ Duplicated ${date} Day ${day} to ${today}.</div>`;
-  render();renderHistory();renderStats();renderProgress();
+function deleteHistoryEntry(date,day){
+  if(!confirm(`Delete saved entry for ${date} Day ${day}?`))return;
+  const before=load().length;
+  const a=load().filter(x=>!(x.date===date&&x.day===day));
+  store(a);
+  const removed=before-a.length;
+  document.getElementById('msg').innerHTML=`<div class="ok">✓ Deleted ${removed} entr${removed===1?"y":"ies"} for ${date} Day ${day}.</div>`;
+  renderHistory();renderStats();renderProgress();
 }
 
 function addDemoData(){
@@ -562,7 +654,7 @@ function renderHistory(){
     const qMatch=!query||names.some(n=>n.toLowerCase().includes(query));
     return exMatch&&qMatch;
   });
-  document.getElementById('history').innerHTML=a.length?a.map(x=>`<div class="history"><b>${x.date} — Day ${x.day}</b> <button class="alt" style="padding:4px 8px;font-size:12px" onclick="startEdit('${x.date}',${x.day})">Edit</button> <button class="alt" style="padding:4px 8px;font-size:12px" onclick="duplicateEntry('${x.date}',${x.day})">Duplicate</button><br>${Object.entries(x.exercises).map(([n,e])=>e.kind==="reps"?`${n}: ${e.sets.map(s=>s.reps+(s.done?" ✓":"")).join(" / ")}`:(e.kind==="interval"?`${n}: ${e.completedRounds||0}/${e.targetRounds||0} rounds${e.done?" ✓":""}`:`${n}: ${fmt(e.completed)}${e.done?" ✓":""}`)).join("<br>")}</div>`).join(""):"<span class='muted'>No saved workouts for current filters.</span>";
+  document.getElementById('history').innerHTML=a.length?a.map(x=>`<div class="history"><b>${x.date} — Day ${x.day}</b> <button class="alt" style="padding:4px 8px;font-size:12px" onclick="startEdit('${x.date}',${x.day})">Edit</button> <button class="alt" style="padding:4px 8px;font-size:12px" onclick="deleteHistoryEntry('${x.date}',${x.day})">Delete</button><br>${Object.entries(x.exercises).map(([n,e])=>e.kind==="reps"?`${n}: ${e.sets.map(s=>s.reps+(s.done?" ✓":"")).join(" / ")}`:(e.kind==="interval"?`${n}: ${e.completedRounds||0}/${e.targetRounds||0} rounds${e.done?" ✓":""}`:`${n}: ${fmt(e.completed)}${e.done?" ✓":""}`)).join("<br>")}</div>`).join(""):"<span class='muted'>No saved workouts for current filters.</span>";
 }
 function renderStats(){const a=load(),sets=a.reduce((z,x)=>z+Object.values(x.exercises).reduce((q,e)=>q+(e.kind==="reps"?e.sets.length:0),0),0);document.getElementById('stats').innerHTML=`<div class="stat"><b>${a.length}</b>sessions</div><div class="stat"><b>${sets}</b>sets tracked</div><div class="stat"><b>${new Set(a.map(x=>x.day)).size}</b>days used</div>`}
 function populateHistoryFilters(){
@@ -625,8 +717,12 @@ function init(){
   document.getElementById('date').textContent=new Date().toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"long",day:"numeric"});
   document.getElementById('dayPick').innerHTML=Object.keys(PROGRAM).map(d=>`<option value="${d}">Day ${d}</option>`).join("");
   document.getElementById('progressDay').innerHTML=Object.keys(PROGRAM).map(d=>`<option value="${d}">Day ${d}</option>`).join("");
+  document.getElementById('planDay').innerHTML='<option value="0">None</option>'+Object.keys(PROGRAM).map(d=>`<option value="${d}">Day ${d}</option>`).join("");
   const dow=new Date().getDay(),todayDay=dow===0?7:dow;document.getElementById('dayPick').value=todayDay;document.getElementById('progressDay').value=todayDay;
   renderProgressExerciseOptions();populateHistoryFilters();renderExerciseManager();
+  renderPlans();
+  clearPlanEditor();
+  setActiveView(localStorage.getItem(VIEWKEY)==="plan"?"plan":"workout");
 
   function setPanel(open){
     const panel=document.getElementById("settingsPanel"),backdrop=document.getElementById("panelBackdrop");
@@ -635,6 +731,10 @@ function init(){
   document.getElementById("settingsPanelOpen").onclick=()=>setPanel(true);
   document.getElementById("settingsPanelClose").onclick=()=>setPanel(false);
   document.getElementById("panelBackdrop").onclick=()=>setPanel(false);
+  document.getElementById("showWorkoutView").onclick=()=>setActiveView("workout");
+  document.getElementById("showPlanView").onclick=()=>setActiveView("plan");
+  document.getElementById("savePlan").onclick=savePlanEntry;
+  document.getElementById("cancelPlanEdit").onclick=()=>{clearPlanEditor();document.getElementById("planMsg").innerHTML=""};
 
   document.getElementById('dayPick').onchange=()=>{const v=document.getElementById('dayPick').value;document.getElementById('progressDay').value=v;renderProgressExerciseOptions();render();renderSettings();renderExerciseManager();renderProgress()};
   document.getElementById('progressDay').onchange=()=>{renderProgressExerciseOptions();renderProgress()};
