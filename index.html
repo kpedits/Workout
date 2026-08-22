@@ -30,6 +30,9 @@ details>div{margin-top:10px}
 .timerbox{background:var(--surface);border-radius:12px;padding:10px;margin-top:9px}
 .setrow{display:grid;grid-template-columns:80px 1fr 88px;gap:8px;align-items:end;margin:8px 0}
 .settitle{align-self:center}
+.setfield label,.setcheck label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+.setcheck{display:flex;flex-direction:column;align-items:flex-start}
+.setcheck input{width:auto;margin-top:0}
 .ok{background:var(--okBg);color:var(--okText);padding:11px;border-radius:10px;margin-top:10px}
 #history{max-height:520px;overflow:auto;padding-right:4px}
 .history{border-top:1px solid var(--line);padding:12px 0}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
@@ -54,8 +57,9 @@ details>div{margin-top:10px}
 .panelbackdrop.show{opacity:1;pointer-events:auto}
 button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 @media(max-width:920px){
-  .setrow{grid-template-columns:1fr 90px}
-  .settitle{grid-column:1/-1}
+  .setrow{grid-template-columns:1fr 104px}
+  .settitle{grid-column:1/-1;margin-bottom:2px}
+  .setcheck{align-items:flex-end}
   #save,#cancelEdit{width:100%}
   .filterrow,.historyfilter{grid-template-columns:1fr 1fr}
   .filter-day,.filter-exercise,.historyfilter label:first-child{grid-column:1/-1}
@@ -174,6 +178,7 @@ function normalizeProgram(raw){
     const s=src[day]||{},b=base[day];
     const baseSigSet=new Set((BASE_PROGRAM[day]?.items||[]).map(it=>JSON.stringify(it.slice(0,6))));
     b.name=String(s.name||b.name);
+    if(/greek/i.test(b.name)) b.name=BASE_PROGRAM[day].name;
     b.rounds=Math.max(0,+s.rounds||0);
     b.rest=Math.max(0,+s.rest||0);
     const items=Array.isArray(s.items)?s.items:[];
@@ -229,7 +234,6 @@ function defaults(){
   let d=readJson(SETKEY,{});
   if(d&&d.schema!==SCHEMA)d={...d,schema:SCHEMA};
   for(let day=1;day<=7;day++)for(const it of PROGRAM[day].items){const k=day+"|"+it[0];if(!(k in d))d[k]=it[1]==="reps"?4:it[2]}
-  for(let day=1;day<=7;day++)d[day+"|roundRest"]??=PROGRAM[day].rest;
   d.transition??=15;d.activeRecovery??=45;d.autoDoneTimer??=false;d.schema=SCHEMA;
   return d;
 }
@@ -241,22 +245,28 @@ function adaptive(day,name,fallback){
   const list=load().filter(x=>x.day===day).sort(byDate).map(x=>x.exercises?.[name]).filter(Boolean);
   if(!list.length)return fallback;
   const latest=list[list.length-1];
-  if(latest.kind==="reps"){
-    let done=0,skip=0;list.forEach(e=>e.sets.every(s=>s.done)?done++:skip++);
-    return Math.max(1,fallback+Math.floor(done/3)-Math.floor(skip/2));
+  let done=0,skip=0,kind=latest.kind;
+  list.forEach(e=>{
+    const ok=e.kind==="reps" ? e.sets.every(s=>s.done) : !!e.done;
+    ok?done++:skip++;
+  });
+  if(kind==="reps"){
+    return Math.max(1,fallback+Math.floor(done/2)-Math.floor(skip/2));
   }
-  return latest.completed??fallback;
+  return Math.max(0,fallback+Math.floor(done/2)*10-Math.floor(skip/2)*10);
 }
 function adaptationInfo(day,name){
-  const list=load().filter(x=>x.day===day).sort(byDate).map(x=>x.exercises?.[name]).filter(e=>e?.kind==="reps");
-  let done=0,skip=0;list.forEach(e=>e.sets.every(s=>s.done)?done++:skip++);
-  return {done,skip,up:Math.floor(done/3),down:Math.floor(skip/2),net:Math.floor(done/3)-Math.floor(skip/2)};
+  const list=load().filter(x=>x.day===day).sort(byDate).map(x=>x.exercises?.[name]).filter(Boolean);
+  let done=0,skip=0,kind=list[0]?.kind||"reps";
+  list.forEach(e=>{const ok=e.kind==="reps"?e.sets.every(s=>s.done):!!e.done;ok?done++:skip++});
+  const step=kind==="reps"?1:10;
+  return {done,skip,step,kind,up:Math.floor(done/2),down:Math.floor(skip/2),net:Math.floor(done/2)-Math.floor(skip/2)};
 }
 
 function renderSettings(){
   const day=+document.getElementById('dayPick').value,d=defaults();let out="";
-  PROGRAM[day].items.forEach((it,i)=>{const info=it[1]==="reps"?adaptationInfo(day,it[0]):null;out+=`<label for="s${i}">${it[0]} default (${it[1]==="reps"?"reps":"sec"})</label><input id="s${i}" type="number" min="1" value="${d[day+"|"+it[0]]}">${info?`<div class="muted">Adaptation: done ${info.done} (+${info.up}) · skipped ${info.skip} (-${info.down}) · net ${info.net>=0?"+":""}${info.net}</div>`:""}`});
-  out+=`<label for="roundRest">Round rest (sec)</label><input id="roundRest" type="number" min="1" value="${d[day+"|roundRest"]}">
+  PROGRAM[day].items.forEach((it,i)=>{const info=adaptationInfo(day,it[0]);out+=`<label for="s${i}">${it[0]} default (${it[1]==="reps"?"reps":"sec"})</label><input id="s${i}" type="number" min="0" value="${d[day+"|"+it[0]]}">${info?`<div class="muted">Adaptation: done ${info.done} (+${info.up*info.step}${info.kind==="reps"?" reps":" sec"}) · skipped ${info.skip} (-${info.down*info.step}${info.kind==="reps"?" reps":" sec"}) · net ${info.net>=0?"+":""}${info.net*info.step}${info.kind==="reps"?" reps":" sec"}</div>`:""}`});
+  out+=`
   <label for="transition">Transition (sec)</label><input id="transition" type="number" min="1" value="${d.transition}">
   <label for="activeRecovery">Active recovery / skipping (sec)</label><input id="activeRecovery" type="number" min="1" value="${d.activeRecovery}">
   <label for="autoDoneTimer">Auto-check Done when timer reaches 00:00</label><input id="autoDoneTimer" type="checkbox" ${d.autoDoneTimer?"checked":""}>`;
@@ -264,8 +274,7 @@ function renderSettings(){
 }
 function saveDefaultSettings(){
   const day=+document.getElementById('dayPick').value,d=defaults();
-  PROGRAM[day].items.forEach((it,i)=>d[day+"|"+it[0]]=Math.max(1,+document.getElementById("s"+i).value||1));
-  d[day+"|roundRest"]=Math.max(1,+document.getElementById("roundRest").value||1);
+  PROGRAM[day].items.forEach((it,i)=>d[day+"|"+it[0]]=Math.max(0,+document.getElementById("s"+i).value||0));
   d.transition=Math.max(1,+document.getElementById("transition").value||1);
   d.activeRecovery=Math.max(1,+document.getElementById("activeRecovery").value||1);
   d.autoDoneTimer=!!document.getElementById("autoDoneTimer").checked;
@@ -285,15 +294,15 @@ function renderExerciseManager(){
   const copyOptions=Object.keys(PROGRAM).map(d=>`<option value="${d}" ${+d===day?"disabled":""}>Day ${d}: ${PROGRAM[d].name}</option>`).join("");
   const list=p.items.length?p.items.map((it,i)=>{
     const cfg=it[7]||{};
-    const summary=it[1]==="reps"?`${it[2]}–${it[3]} reps · ${cfg.sets||1} sets · rest ${cfg.rest||0}s · trans ${cfg.transition||0}s`
+    const summary=it[1]==="reps"?`${it[2]} reps · ${cfg.sets||1} sets · rest ${cfg.rest||0}s · trans ${cfg.transition||0}s`
       :(it[1]==="interval"?`${cfg.work||45}s work / ${cfg.rest||15}s rest × ${cfg.rounds||1} rounds · trans ${cfg.transition||0}s`:`${it[2]}s hold · ${cfg.sets||1} sets · rest ${cfg.rest||0}s · trans ${cfg.transition||0}s`);
     return `<div class="history"><b>${it[0]}</b> <span class="muted">(${kindLabel(it[1])}) ${summary} · ${it[6]==="default"?"default":"custom"}</span><div class="row"><button class="alt" onclick="editProgramExercise(${i})">Edit</button><button class="alt" onclick="deleteProgramExercise(${i})">Delete</button></div></div>`;
   }).join(""):"<p class='muted'>No exercises for this day.</p>";
   document.getElementById("exerciseManager").innerHTML=`
   <div class="manager-grid">
     <label for="exDayName">Day Name<input id="exDayName" value="${p.name.replace(/"/g,"&quot;")}"></label>
-    <label for="exDayRounds">Rounds<input id="exDayRounds" type="number" min="0" value="${p.rounds}"></label>
-    <label for="exDayRest">Round Rest (sec)<input id="exDayRest" type="number" min="0" value="${p.rest}"></label>
+    <label for="exDayMeta">Structure<input id="exDayMeta" value="Per-exercise sets/reps/timing" disabled></label>
+    <label for="exDayRest">Day Rest (legacy)<input id="exDayRest" type="number" min="0" value="${p.rest}"></label>
     <label for="exCopyFrom">Auto add from Day<select id="exCopyFrom">${copyOptions}</select></label>
   </div>
   <div class="row"><button onclick="saveDayProgramMeta()">Save Day Config</button><button class="alt" onclick="copyDayProgram()">Copy Day Exercises</button><button class="alt" onclick="restoreMissingDefaultsForDay()">Restore Missing Defaults</button><button class="alt" onclick="restoreDayProgramDefaults()">Restore Day Defaults</button><button class="alt" onclick="restoreAllProgramDefaults()">Restore All Defaults</button></div>
@@ -302,8 +311,7 @@ function renderExerciseManager(){
     <input id="exEditIndex" type="hidden" value="">
     <label for="exName">Exercise Name<input id="exName" placeholder="e.g., Incline Push-Ups"></label>
     <label for="exKind">Type<select id="exKind" onchange="syncExerciseKindInputs()"><option value="reps">Reps</option><option value="hold">Hold Time</option><option value="interval">Interval</option></select></label>
-    <label for="exMin" id="exMinLabel">Min Reps<input id="exMin" type="number" min="0" value="8"></label>
-    <label for="exMax" id="exMaxLabel">Max Reps<input id="exMax" type="number" min="0" value="12"></label>
+    <label for="exMin" id="exMinLabel">Default Reps<input id="exMin" type="number" min="0" value="4"></label>
     <label for="exSets" id="exSetsLabel">Sets<input id="exSets" type="number" min="1" value="4"></label>
     <label for="exSetRest" id="exSetRestLabel">Rest between sets (sec)<input id="exSetRest" type="number" min="0" value="60"></label>
     <label for="exTransition">Transition (sec)<input id="exTransition" type="number" min="0" value="15"></label>
@@ -319,23 +327,21 @@ function renderExerciseManager(){
 }
 function syncExerciseKindInputs(){
   const kind=document.getElementById("exKind")?.value||"reps";
-  const minLabel=document.getElementById("exMinLabel"),maxLabel=document.getElementById("exMaxLabel"),maxInput=document.getElementById("exMax");
+  const minLabel=document.getElementById("exMinLabel");
   const setsLabel=document.getElementById("exSetsLabel"),setRestLabel=document.getElementById("exSetRestLabel");
   const workLabel=document.getElementById("exWorkLabel"),restLabel=document.getElementById("exRestLabel"),roundsLabel=document.getElementById("exRoundsLabel");
-  if(!minLabel||!maxLabel||!maxInput||!setsLabel||!setRestLabel||!workLabel||!restLabel||!roundsLabel)return;
-  minLabel.firstChild.textContent=kind==="reps"?"Min Reps":"Target Seconds";
-  maxLabel.style.display=kind==="reps"?"block":"none";
+  if(!minLabel||!setsLabel||!setRestLabel||!workLabel||!restLabel||!roundsLabel)return;
+  minLabel.firstChild.textContent=kind==="reps"?"Default Reps":"Default Seconds";
   setsLabel.style.display=kind==="interval"?"none":"block";
   setRestLabel.style.display=kind==="interval"?"none":"block";
   workLabel.style.display=kind==="interval"?"block":"none";
   restLabel.style.display=kind==="interval"?"block":"none";
   roundsLabel.style.display=kind==="interval"?"block":"none";
-  if(kind!=="reps")maxInput.value=document.getElementById("exMin").value||maxInput.value;
 }
 function saveDayProgramMeta(){
   const day=+document.getElementById("dayPick").value,p=PROGRAM[day];
   p.name=(document.getElementById("exDayName").value||p.name).trim()||p.name;
-  p.rounds=Math.max(0,+document.getElementById("exDayRounds").value||0);
+  p.rounds=Math.max(0,+p.rounds||0);
   p.rest=Math.max(0,+document.getElementById("exDayRest").value||0);
   saveProgram(PROGRAM);onProgramChanged();
   document.getElementById('msg').innerHTML='<div class="ok">✓ Day configuration updated.</div>';
@@ -375,7 +381,6 @@ function editProgramExercise(idx){
   document.getElementById("exName").value=it[0];
   document.getElementById("exKind").value=it[1];
   document.getElementById("exMin").value=it[2];
-  document.getElementById("exMax").value=it[3];
   document.getElementById("exSets").value=it?.[7]?.sets||1;
   document.getElementById("exSetRest").value=it?.[7]?.rest||0;
   document.getElementById("exTransition").value=it?.[7]?.transition||15;
@@ -391,8 +396,7 @@ function cancelProgramExerciseEdit(){
   document.getElementById("exEditIndex").value="";
   document.getElementById("exName").value="";
   document.getElementById("exKind").value="reps";
-  document.getElementById("exMin").value="8";
-  document.getElementById("exMax").value="12";
+  document.getElementById("exMin").value="4";
   document.getElementById("exSets").value="4";
   document.getElementById("exSetRest").value="60";
   document.getElementById("exTransition").value="15";
@@ -410,7 +414,7 @@ function upsertProgramExercise(){
   if(!name){alert("Exercise name is required.");return}
   const kind=document.getElementById("exKind").value;
   const min=Math.max(0,+document.getElementById("exMin").value||0);
-  const max=kind==="reps"?Math.max(min,+document.getElementById("exMax").value||min):min;
+  const max=min;
   const cfg=kind==="interval"
     ?{work:Math.max(1,+document.getElementById("exWork").value||45),rest:Math.max(0,+document.getElementById("exRest").value||15),rounds:Math.max(1,+document.getElementById("exRounds").value||4),transition:Math.max(0,+document.getElementById("exTransition").value||15)}
     :{sets:Math.max(1,+document.getElementById("exSets").value||1),rest:Math.max(0,+document.getElementById("exSetRest").value||0),transition:Math.max(0,+document.getElementById("exTransition").value||15)};
@@ -443,12 +447,12 @@ function render(){
       const setCount=Math.max(1,+cfg.sets||1),restSec=Math.max(0,+cfg.rest||0),transitionSec=Math.max(0,+cfg.transition||0);
       const rows=saved?.exercises?.[name]?.sets||Array.from({length:setCount},()=>({reps:ad,done:false}));
       const tempoPerRep=tempoSeconds(it[4]);
-      out+=`<div class="exercise"><h3>${name}</h3><div class="muted">Program: ${it[2]}–${it[3]} reps</div><div class="tempo"><b>Tempo:</b> ${it[4]}</div><div class="muted">${it[5]}</div>`;
+      out+=`<div class="exercise"><h3>${name}</h3><div class="muted">Default: ${it[2]} reps</div><div class="tempo"><b>Tempo:</b> ${it[4]}</div><div class="muted">${it[5]}</div>`;
       for(let r=0;r<setCount;r++){
         const x=rows[r]||{reps:ad,done:false};
         const repId=uid(`rep-${i}-${r}`),doneId=uid(`done-${i}-${r}`);
         const est=tempoPerRep?`~${fmt(x.reps*tempoPerRep)}`:"";
-        out+=`<div class="setrow"><div class="settitle"><b>Set ${r+1}</b> <span class="muted">${est}</span></div><label class="setreps" for="${repId}">Reps</label><input id="${repId}" data-name="${encodeURIComponent(name)}" data-r="${r}" type="number" min="0" value="${x.reps}"><label class="setdone" for="${doneId}">Done</label><input id="${doneId}" data-done="${encodeURIComponent(name)}" data-r="${r}" type="checkbox" ${x.done?"checked":""}></div>`;
+        out+=`<div class="setrow"><div class="settitle"><b>Set ${r+1}</b> <span class="muted">${est}</span></div><div class="setfield"><label for="${repId}">Reps</label><input id="${repId}" data-name="${encodeURIComponent(name)}" data-r="${r}" type="number" min="0" value="${x.reps}"></div><div class="setcheck"><label for="${doneId}">Done</label><input id="${doneId}" data-done="${encodeURIComponent(name)}" data-r="${r}" type="checkbox" ${x.done?"checked":""}></div></div>`;
       }
       out+=`<div class="muted">Sets: ${setCount} · Rest between sets: ${restSec}s · Transition: ${transitionSec}s</div>`;
       out+=`</div>`;
