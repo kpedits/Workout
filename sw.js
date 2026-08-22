@@ -1,4 +1,4 @@
-const CACHE = "workout-tracker-v27-android-import-fix";
+const CACHE = "workout-tracker-v28-quiz-answer-roundtrip-fix";
 const ASSETS = ["./", "./index.html", "./manifest.json"];
 
 self.addEventListener("install", (e) => {

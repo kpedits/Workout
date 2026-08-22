@@ -331,9 +331,10 @@ function parseQuizRows(text){
     const answerRaw=String(r[iA]||"").trim();
     const byNum=Math.max(0,Math.min(3,(+answerRaw||0)-1));
     let answerIndex=(/^[1-4]$/.test(answerRaw)&&choices[byNum])?byNum:-1;
+    if(answerIndex<0&&/^[a-d]$/i.test(answerRaw))answerIndex=answerRaw.toLowerCase().charCodeAt(0)-97;
     if(answerIndex<0){
-      const t=answerRaw.toLowerCase();
-      answerIndex=choices.findIndex(c=>c.toLowerCase()===t);
+      const t=normText(answerRaw);
+      answerIndex=choices.findIndex(c=>normText(c)===t);
     }
     return {
       id:uid("q"),
@@ -391,7 +392,7 @@ async function exportQuizCsv(){
   const header=["sl.no","question","choice1","choice2","choice3","choice4","answer","notes","difficulty level","pass","fail"];
   const lines=[header.map(csvCell).join(",")];
   questions.forEach(q=>{
-    const answer=(q.answerIndex>=0&&q.choices[q.answerIndex])?q.choices[q.answerIndex]:(q.answerText||"");
+    const answer=(q.answerIndex>=0&&q.answerIndex<=3)?String(q.answerIndex+1):"";
     const row=[q.slNo,q.question,q.choices[0]||"",q.choices[1]||"",q.choices[2]||"",q.choices[3]||"",answer,q.notes||"",q.difficulty||"",q.pass||0,q.fail||0];
     lines.push(row.map(csvCell).join(","));
   });
@@ -531,7 +532,8 @@ function submitQuizAnswer(){
   const idx=all.findIndex(q=>q.id===current.id);
   if(idx<0)return;
   const q=all[idx];
-  const correct=q.answerIndex>=0?selected===q.answerIndex:String(q.choices[selected]||"").trim().toLowerCase()===String(q.answerText||"").trim().toLowerCase();
+  const derivedAnswerIndex=q.answerIndex>=0?q.answerIndex:q.choices.findIndex(c=>normText(c)===normText(q.answerText));
+  const correct=derivedAnswerIndex>=0?selected===derivedAnswerIndex:normText(q.choices[selected]||"")===normText(q.answerText||"");
   if(correct)q.pass+=1;else q.fail+=1;
   saveQuiz(all);
   q.choices.forEach((_,i)=>{
@@ -539,12 +541,12 @@ function submitQuizAnswer(){
     if(!label||!input)return;
     input.disabled=true;
     label.classList.remove("correct","wrong");
-    if(q.answerIndex>=0&&i===q.answerIndex)label.classList.add("correct");
+    if(derivedAnswerIndex>=0&&i===derivedAnswerIndex)label.classList.add("correct");
     if(i===selected&&!correct)label.classList.add("wrong");
   });
   const submitBtn=document.getElementById("quizSubmit");
   if(submitBtn)submitBtn.disabled=true;
-  const right=q.answerIndex>=0?q.choices[q.answerIndex]:(q.answerText||"");
+  const right=derivedAnswerIndex>=0?q.choices[derivedAnswerIndex]:(q.answerText||"");
   document.getElementById("quizMsg").innerHTML=`<div class="${correct?"ok":"muted"}">${correct?"Correct":"Wrong"}</div>`;
   document.getElementById("quizFeedback").innerHTML=`<div class="card secondary"><div class="muted">Right answer: ${escHtml(right)}</div><div class="muted">Pass: ${q.pass} · Fail: ${q.fail}</div>${q.notes?`<div class="muted">Notes: ${escHtml(q.notes)}</div>`:""}<div class="quiz-actions"><button id="editQuizAfterSubmit" type="button" class="alt">Edit Question</button></div></div>`;
   const editBtn=document.getElementById("editQuizAfterSubmit");
