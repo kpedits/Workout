@@ -1,4 +1,4 @@
-const CACHE = "workout-tracker-v16-personal-plan-view";
+const CACHE = "workout-tracker-v17-page-headers-split";
 const ASSETS = ["./", "./index.html", "./manifest.json"];
 
 self.addEventListener("install", (e) => {
