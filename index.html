@@ -53,8 +53,8 @@ details>div{margin-top:10px}
 .editing{margin-top:8px;padding:8px;border-radius:8px;background:var(--surface);font-size:13px}
 .manager-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .manager-list .history{padding:10px 0}
-.viewtabs{display:flex;gap:8px;margin:0 0 12px;padding:4px;background:var(--surface);border:1px solid var(--line);border-radius:14px}
-.tabbtn{flex:1;background:transparent;color:var(--btnAltText);border:1px solid transparent}
+.viewtabs{display:flex;gap:8px;margin:0 0 12px;padding:4px;background:var(--surface);border:1px solid var(--line);border-radius:14px;flex-wrap:wrap}
+.tabbtn{flex:1 1 180px;min-width:140px;background:transparent;color:var(--btnAltText);border:1px solid transparent}
 .tabbtn.active{background:var(--btn);color:var(--btnText);border-color:transparent}
 .view{display:none}
 .view.active{display:block}
@@ -81,6 +81,11 @@ details>div{margin-top:10px}
 .flash-stage .flash-blob.b2{width:210px;height:210px;background:var(--flashBlob2);bottom:-50px;right:-35px;animation-delay:1.2s}
 .flash-stage #flashCard{position:relative;z-index:1}
 .flash-stage #flashCard,.flash-stage #flashCard *{max-width:100%}
+.flash-page.active.flash-running{display:flex;flex-direction:column;min-height:calc(100vh - 96px)}
+.flash-page.active.flash-running>.card.secondary{display:flex;flex-direction:column;flex:1;min-height:0}
+.flash-page.active.flash-running .flash-stage{display:flex;flex-direction:column;flex:1;min-height:0}
+.flash-page.active.flash-running #flashCard{display:flex;flex-direction:column;flex:1;min-height:0}
+.flash-page.active.flash-running .flash-card{height:100%;max-height:none}
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
 .sidepanel{position:fixed;top:0;right:0;height:100vh;width:min(520px,92vw);background:var(--card);border-left:1px solid var(--line);box-shadow:-8px 0 24px #0006;transform:translateX(100%);transition:transform .22s ease;z-index:40;display:flex;flex-direction:column}
 .sidepanel.open{transform:translateX(0)}
@@ -91,6 +96,8 @@ details>div{margin-top:10px}
 button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible,textarea:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 input:focus,select:focus,textarea:focus{border-color:var(--focus);box-shadow:0 0 0 3px color-mix(in oklab,var(--focus) 22%,transparent)}
 @media(max-width:920px){
+  .viewtabs{display:grid;grid-template-columns:1fr 1fr}
+  .tabbtn{min-width:0}
   .setrow{grid-template-columns:1fr 104px}
   .settitle{grid-column:1/-1;margin-bottom:2px}
   .setcheck{align-items:flex-end}
@@ -558,6 +565,7 @@ function saveFlashTimeSetting(){
   saveQuizSettings({flashShowSec:v});
   document.getElementById("flashShowSec").value=String(v);
   flashRemaining=v;flashStarted=false;flashPaused=false;flashSeenSec=0;
+  document.getElementById("viewFlash")?.classList.remove("flash-running");
   renderFlashCard();
   document.getElementById("flashMsg").textContent=`Flash card time saved: ${v}s`;
 }
@@ -641,6 +649,7 @@ function startFlashSession(){
   if(!list.length){document.getElementById("flashMsg").textContent="No flash cards available.";return}
   ensureFlashSession(list);
   flashStarted=true;flashPaused=false;flashSeenSec=0;flashRemaining=loadQuizSettings().flashShowSec;
+  document.getElementById("viewFlash")?.classList.add("flash-running");
   renderFlashCard();
 }
 function renderFlashCard(){
@@ -893,7 +902,7 @@ function clearQuizData(){
   localStorage.removeItem(QUIZSESSIONKEY);
   localStorage.removeItem(FLASHSESSIONKEY);
   quizCursor=0;
-  flashStarted=false;flashPaused=false;flashSeenSec=0;flashRemaining=loadQuizSettings().flashShowSec;
+  flashStarted=false;flashPaused=false;flashSeenSec=0;flashRemaining=loadQuizSettings().flashShowSec;document.getElementById("viewFlash")?.classList.remove("flash-running");
   renderQuizDifficulty();
   renderQuiz();
   renderFlashDifficultyOptions();
@@ -953,7 +962,7 @@ function setActiveView(view,opts={}){
     const panel=document.getElementById("settingsPanel"),backdrop=document.getElementById("panelBackdrop");
     panel.classList.remove("open");backdrop.classList.remove("show");panel.setAttribute("aria-hidden","true");
   }
-  if(isFlash){renderFlashDifficultyOptions();renderFlashCard()}else{finalizeFlashView();stopFlashCountdown();flashPaused=false;flashStarted=false;}
+  if(isFlash){renderFlashDifficultyOptions();renderFlashCard()}else{finalizeFlashView();stopFlashCountdown();flashPaused=false;flashStarted=false;document.getElementById("viewFlash")?.classList.remove("flash-running");}
   localStorage.setItem(VIEWKEY,mode);
   if(updateHash){
     const target=`#/${mode}`;
@@ -1428,7 +1437,7 @@ function init(){
   document.getElementById("flashStart").onclick=startFlashSession;
   document.getElementById("flashSaveSettings").onclick=saveFlashTimeSetting;
   document.getElementById("quizDifficulty").onchange=()=>{quizCursor=0;localStorage.removeItem(QUIZSESSIONKEY);renderQuiz();};
-  document.getElementById("flashDifficulty").onchange=()=>{flashIndex=0;flashRemaining=loadQuizSettings().flashShowSec;flashStarted=false;localStorage.removeItem(FLASHSESSIONKEY);renderFlashCard();};
+  document.getElementById("flashDifficulty").onchange=()=>{flashIndex=0;flashRemaining=loadQuizSettings().flashShowSec;flashStarted=false;document.getElementById("viewFlash")?.classList.remove("flash-running");localStorage.removeItem(FLASHSESSIONKEY);renderFlashCard();};
 
   document.getElementById('dayPick').onchange=()=>{const v=document.getElementById('dayPick').value;document.getElementById('progressDay').value=v;renderProgressExerciseOptions();render();renderSettings();renderExerciseManager();renderProgress()};
   document.getElementById('progressDay').onchange=()=>{renderProgressExerciseOptions();renderProgress()};
