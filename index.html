@@ -46,6 +46,12 @@ details>div{margin-top:10px}
 .editing{margin-top:8px;padding:8px;border-radius:8px;background:var(--surface);font-size:13px}
 .manager-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .manager-list .history{padding:10px 0}
+.sidepanel{position:fixed;top:0;right:0;height:100vh;width:min(520px,92vw);background:var(--card);border-left:1px solid var(--line);box-shadow:-8px 0 24px #0006;transform:translateX(100%);transition:transform .22s ease;z-index:40;display:flex;flex-direction:column}
+.sidepanel.open{transform:translateX(0)}
+.sidepanel-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 14px 10px;border-bottom:1px solid var(--line)}
+.sidepanel-body{overflow:auto;padding:12px}
+.panelbackdrop{position:fixed;inset:0;background:#0006;opacity:0;pointer-events:none;transition:opacity .2s ease;z-index:30}
+.panelbackdrop.show{opacity:1;pointer-events:auto}
 button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 @media(max-width:920px){
   .setrow{grid-template-columns:1fr 90px}
@@ -56,19 +62,13 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 }
 </style></head>
 <body>
-<header><div class="header-top"><h1>Workout Tracker</h1><button id="themeToggle" class="alt" type="button">☀️ Day</button></div><div id="date"></div></header>
+<header><div class="header-top"><h1>Workout Tracker</h1><div class="row" style="margin:0"><button id="settingsPanelOpen" class="alt" type="button">⚙️ Settings</button><button id="themeToggle" class="alt" type="button">☀️ Day</button></div></div><div id="date"></div></header>
 <main>
 <section class="card"><h2 id="dayTitle"></h2><div id="dayMeta" class="muted"></div>
 <label for="dayPick" class="muted">Workout Day</label><select id="dayPick"></select></section>
 
 <section class="card primary"><h2>Today's Circuit</h2><div id="workout"></div>
 <div class="savebar"><button id="save">✓ DONE — SAVE WORKOUT</button><button id="cancelEdit" class="alt" style="margin-top:8px;display:none">Cancel Edit Mode</button></div><div id="msg" aria-live="polite"></div></section>
-
-<section class="card secondary"><details><summary>⚙️ Editable Default Settings</summary><div><div id="settings"></div>
-<button id="saveSettings">Save Default Settings</button>
-<p class="muted">Defaults are separate from workout history. Rep defaults start at 4, then adapt by +1 every 3 completed sessions and -1 every 2 skipped sessions (per day/exercise).</p></div></details></section>
-
-<section class="card secondary"><details><summary>🧩 Exercise Manager</summary><div id="exerciseManager"></div></details></section>
 
 <section class="card secondary"><h2>Progress</h2><div id="stats" class="stats"></div><div class="filterrow">
 <label class="filter-day" for="progressDay">Day<select id="progressDay"></select></label>
@@ -90,6 +90,16 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 <section class="card secondary"><details><summary>Data</summary><div><div class="row"><button id="export">Export</button><button id="import" class="alt">Import</button><button id="demoData" class="alt">Add 3 Weeks Demo</button><button id="smoke" class="alt">Run Smoke Test</button><button id="clear" class="alt">Clear</button></div>
 <input id="file" type="file" accept="application/json" hidden><p class="muted">Results stay in this browser.</p></div></details></section>
 </main>
+<div id="panelBackdrop" class="panelbackdrop"></div>
+<aside id="settingsPanel" class="sidepanel" aria-hidden="true">
+  <div class="sidepanel-head"><h2>Settings</h2><button id="settingsPanelClose" class="alt" type="button">Close</button></div>
+  <div class="sidepanel-body">
+    <section class="card secondary"><h3>Editable Default Settings</h3><div id="settings"></div>
+    <button id="saveSettings">Save Default Settings</button>
+    <p class="muted">Defaults are separate from workout history. Rep defaults start at 4, then adapt by +1 every 3 completed sessions and -1 every 2 skipped sessions (per day/exercise).</p></section>
+    <section class="card secondary"><h3>Exercise Manager</h3><div id="exerciseManager"></div></section>
+  </div>
+</aside>
 
 <script>
 const BASE_PROGRAM={
@@ -146,6 +156,7 @@ function normalizeProgram(raw){
   const base=deepClone(BASE_PROGRAM),src=(raw&&typeof raw==="object")?raw:{};
   for(let day=1;day<=7;day++){
     const s=src[day]||{},b=base[day];
+    const baseSigSet=new Set((BASE_PROGRAM[day]?.items||[]).map(it=>JSON.stringify(it.slice(0,6))));
     b.name=String(s.name||b.name);
     b.rounds=Math.max(0,+s.rounds||0);
     b.rest=Math.max(0,+s.rest||0);
@@ -157,8 +168,13 @@ function normalizeProgram(raw){
       const high=Math.max(low,+it?.[3]||low);
       const tempo=String(it?.[4]||"");
       const notes=String(it?.[5]||"");
-      return [name,kind,low,high,tempo,notes];
+      const sig=JSON.stringify([name,kind,low,high,tempo,notes]);
+      const tag=(it?.[6]==="default"||baseSigSet.has(sig))?"default":"custom";
+      return [name,kind,low,high,tempo,notes,tag];
     });
+    if(!items.length){
+      b.items=deepClone(BASE_PROGRAM[day].items).map(it=>[...it,"default"]);
+    }
   }
   return base;
 }
@@ -247,7 +263,7 @@ function onProgramChanged(){
 function renderExerciseManager(){
   const day=+document.getElementById('dayPick').value,p=PROGRAM[day];
   const copyOptions=Object.keys(PROGRAM).map(d=>`<option value="${d}" ${+d===day?"disabled":""}>Day ${d}: ${PROGRAM[d].name}</option>`).join("");
-  const list=p.items.length?p.items.map((it,i)=>`<div class="history"><b>${it[0]}</b> <span class="muted">(${it[1]==="reps"?"reps":"time"}) ${it[2]}${it[1]==="reps"?"–"+it[3]:" sec"}</span><div class="row"><button class="alt" onclick="editProgramExercise(${i})">Edit</button><button class="alt" onclick="deleteProgramExercise(${i})">Delete</button></div></div>`).join(""):"<p class='muted'>No exercises for this day.</p>";
+  const list=p.items.length?p.items.map((it,i)=>`<div class="history"><b>${it[0]}</b> <span class="muted">(${it[1]==="reps"?"reps":"time"}) ${it[2]}${it[1]==="reps"?"–"+it[3]:" sec"} · ${it[6]==="default"?"default":"custom"}</span><div class="row"><button class="alt" onclick="editProgramExercise(${i})">Edit</button><button class="alt" onclick="deleteProgramExercise(${i})">Delete</button></div></div>`).join(""):"<p class='muted'>No exercises for this day.</p>";
   document.getElementById("exerciseManager").innerHTML=`
   <div class="manager-grid">
     <label for="exDayName">Day Name<input id="exDayName" value="${p.name.replace(/"/g,"&quot;")}"></label>
@@ -255,7 +271,7 @@ function renderExerciseManager(){
     <label for="exDayRest">Round Rest (sec)<input id="exDayRest" type="number" min="0" value="${p.rest}"></label>
     <label for="exCopyFrom">Auto add from Day<select id="exCopyFrom">${copyOptions}</select></label>
   </div>
-  <div class="row"><button onclick="saveDayProgramMeta()">Save Day Config</button><button class="alt" onclick="copyDayProgram()">Copy Day Exercises</button></div>
+  <div class="row"><button onclick="saveDayProgramMeta()">Save Day Config</button><button class="alt" onclick="copyDayProgram()">Copy Day Exercises</button><button class="alt" onclick="restoreMissingDefaultsForDay()">Restore Missing Defaults</button><button class="alt" onclick="restoreDayProgramDefaults()">Restore Day Defaults</button><button class="alt" onclick="restoreAllProgramDefaults()">Restore All Defaults</button></div>
   <hr style="border-color:var(--line);border-width:1px 0 0">
   <div class="manager-grid">
     <input id="exEditIndex" type="hidden" value="">
@@ -293,6 +309,28 @@ function copyDayProgram(){
   saveProgram(PROGRAM);onProgramChanged();
   document.getElementById('msg').innerHTML=`<div class="ok">✓ Copied exercises from Day ${from} to Day ${day}.</div>`;
 }
+function restoreDayProgramDefaults(){
+  const day=+document.getElementById("dayPick").value;
+  if(!confirm(`Restore Day ${day} exercises and day config to original defaults?`))return;
+  PROGRAM[day]=deepClone(BASE_PROGRAM[day]);
+  saveProgram(PROGRAM);onProgramChanged();cancelProgramExerciseEdit();
+  document.getElementById('msg').innerHTML=`<div class="ok">✓ Restored Day ${day} to default program.</div>`;
+}
+function restoreMissingDefaultsForDay(){
+  const day=+document.getElementById("dayPick").value;
+  const baseItems=deepClone(BASE_PROGRAM[day].items).map(it=>[...it,"default"]);
+  const seen=new Set(PROGRAM[day].items.map(it=>it[0].toLowerCase().trim()));
+  let added=0;
+  baseItems.forEach(it=>{if(!seen.has(it[0].toLowerCase().trim())){PROGRAM[day].items.push(it);added++}});
+  saveProgram(PROGRAM);onProgramChanged();cancelProgramExerciseEdit();
+  document.getElementById('msg').innerHTML=`<div class="ok">✓ Restored ${added} missing default exercise${added===1?"":"s"} for Day ${day}.</div>`;
+}
+function restoreAllProgramDefaults(){
+  if(!confirm("Restore ALL days to original default program? This will remove all custom exercise changes."))return;
+  PROGRAM=deepClone(BASE_PROGRAM);
+  saveProgram(PROGRAM);onProgramChanged();cancelProgramExerciseEdit();
+  document.getElementById('msg').innerHTML='<div class="ok">✓ Restored all days to default program.</div>';
+}
 function editProgramExercise(idx){
   const day=+document.getElementById("dayPick").value,it=PROGRAM[day].items[idx];if(!it)return;
   document.getElementById("exEditIndex").value=idx;
@@ -325,7 +363,9 @@ function upsertProgramExercise(){
   const max=kind==="reps"?Math.max(min,+document.getElementById("exMax").value||min):min;
   const tempo=(document.getElementById("exTempo").value||"").trim();
   const notes=(document.getElementById("exNotes").value||"").trim();
-  const item=[name,kind,min,max,tempo,notes];
+  const existing=(idxStr===""?null:items[+idxStr]);
+  const tag=existing?.[6]==="default"?"default":"custom";
+  const item=[name,kind,min,max,tempo,notes,tag];
   if(idxStr==="")items.push(item); else items[+idxStr]=item;
   saveProgram(PROGRAM);onProgramChanged();cancelProgramExerciseEdit();
   document.getElementById('msg').innerHTML=`<div class="ok">✓ ${idxStr===""?"Added":"Updated"} exercise for Day ${day}.</div>`;
@@ -495,7 +535,7 @@ function handleShortcuts(e){
   if(e.key.toLowerCase()==="n"||e.key.toLowerCase()==="p"){
     const dayPick=document.getElementById("dayPick");let day=+dayPick.value;
     day=e.key.toLowerCase()==="n"?(day%7)+1:(day===1?7:day-1);
-    dayPick.value=day;document.getElementById("progressDay").value=day;renderProgressExerciseOptions();render();renderSettings();renderProgress();
+    dayPick.value=day;document.getElementById("progressDay").value=day;renderProgressExerciseOptions();render();renderSettings();renderExerciseManager();renderProgress();
   }
 }
 
@@ -507,6 +547,14 @@ function init(){
   document.getElementById('progressDay').innerHTML=Object.keys(PROGRAM).map(d=>`<option value="${d}">Day ${d}</option>`).join("");
   const dow=new Date().getDay(),todayDay=dow===0?7:dow;document.getElementById('dayPick').value=todayDay;document.getElementById('progressDay').value=todayDay;
   renderProgressExerciseOptions();populateHistoryFilters();renderExerciseManager();
+
+  function setPanel(open){
+    const panel=document.getElementById("settingsPanel"),backdrop=document.getElementById("panelBackdrop");
+    panel.classList.toggle("open",open);backdrop.classList.toggle("show",open);panel.setAttribute("aria-hidden",open?"false":"true");
+  }
+  document.getElementById("settingsPanelOpen").onclick=()=>setPanel(true);
+  document.getElementById("settingsPanelClose").onclick=()=>setPanel(false);
+  document.getElementById("panelBackdrop").onclick=()=>setPanel(false);
 
   document.getElementById('dayPick').onchange=()=>{const v=document.getElementById('dayPick').value;document.getElementById('progressDay').value=v;renderProgressExerciseOptions();render();renderSettings();renderExerciseManager();renderProgress()};
   document.getElementById('progressDay').onchange=()=>{renderProgressExerciseOptions();renderProgress()};
