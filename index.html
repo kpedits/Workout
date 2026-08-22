@@ -5,8 +5,8 @@
 <meta name="theme-color" content="#111827"><link rel="manifest" href="manifest.json">
 <title>Workout Tracker v8</title>
 <style>
-:root{--bg:#0b1220;--text:#e5e7eb;--header:#020617;--card:#111827;--line:#1f2937;--muted:#94a3b8;--inputBg:#0f172a;--inputBorder:#334155;--btn:#2563eb;--btnText:#fff;--btnAlt:#1f2937;--btnAltText:#e5e7eb;--surface:#0f172a;--okBg:#052e1a;--okText:#86efac;--focus:#22d3ee;--flashA:#0f172a;--flashB:#1e293b;--flashC:#0ea5e9}
-body.day{--bg:#f3f4f6;--text:#111827;--header:#111827;--card:#fff;--line:#eee;--muted:#6b7280;--inputBg:#fff;--inputBorder:#d1d5db;--btn:#111827;--btnText:#fff;--btnAlt:#e5e7eb;--btnAltText:#111827;--surface:#f8fafc;--okBg:#ecfdf5;--okText:#166534;--focus:#0ea5e9;--flashA:#ecfeff;--flashB:#e0f2fe;--flashC:#0ea5e9}
+:root{--bg:#0b1220;--text:#e5e7eb;--header:#020617;--card:#111827;--line:#1f2937;--muted:#94a3b8;--inputBg:#0f172a;--inputBorder:#334155;--btn:#2563eb;--btnText:#fff;--btnAlt:#1f2937;--btnAltText:#e5e7eb;--surface:#0f172a;--okBg:#052e1a;--okText:#86efac;--focus:#22d3ee;--flashA:#0f172a;--flashB:#1e293b;--flashC:#0ea5e9;--flashBg1:#1e1b4b;--flashBg2:#0f172a;--flashBlob1:#22d3ee55;--flashBlob2:#f472b655}
+body.day{--bg:#f3f4f6;--text:#111827;--header:#111827;--card:#fff;--line:#eee;--muted:#6b7280;--inputBg:#fff;--inputBorder:#d1d5db;--btn:#111827;--btnText:#fff;--btnAlt:#e5e7eb;--btnAltText:#111827;--surface:#f8fafc;--okBg:#ecfdf5;--okText:#166534;--focus:#0ea5e9;--flashA:#ecfeff;--flashB:#e0f2fe;--flashC:#0ea5e9;--flashBg1:#dbeafe;--flashBg2:#f8fafc;--flashBlob1:#0ea5e933;--flashBlob2:#fb718533}
 body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,sans-serif}
 main{max-width:920px;margin:auto;padding:14px}
 .page-head{background:var(--header);color:#fff;padding:18px;border-radius:16px}
@@ -71,6 +71,14 @@ details>div{margin-top:10px}
 .quiz-editor-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .flash-card{min-height:260px;max-height:68vh;overflow-y:auto;display:flex;flex-direction:column;justify-content:flex-start;align-items:flex-start;gap:12px;user-select:none;touch-action:pan-y;background:linear-gradient(140deg,var(--flashA),var(--flashB));border:1px solid color-mix(in oklab,var(--flashC) 35%,var(--line));box-shadow:0 10px 28px #0003}
 .flash-timer{font-weight:700;color:var(--muted)}
+.flash-page.active{display:block;width:100vw;margin-left:calc(50% - 50vw);min-height:calc(100vh - 28px);padding:18px;border-radius:18px;position:relative;overflow:hidden;background:linear-gradient(165deg,var(--flashBg1),var(--flashBg2))}
+.flash-page .page-head{background:#00000033;backdrop-filter:blur(6px)}
+.flash-shell{position:relative;z-index:1;max-width:980px;margin:auto}
+.flash-controls{background:#00000026;border:1px solid #ffffff1f;border-radius:14px;padding:12px}
+.flash-blob{position:absolute;border-radius:999px;filter:blur(6px);pointer-events:none;animation:float 8s ease-in-out infinite}
+.flash-blob.b1{width:240px;height:240px;background:var(--flashBlob1);top:-40px;left:-40px}
+.flash-blob.b2{width:280px;height:280px;background:var(--flashBlob2);bottom:-70px;right:-60px;animation-delay:1.2s}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
 .sidepanel{position:fixed;top:0;right:0;height:100vh;width:min(520px,92vw);background:var(--card);border-left:1px solid var(--line);box-shadow:-8px 0 24px #0006;transform:translateX(100%);transition:transform .22s ease;z-index:40;display:flex;flex-direction:column}
 .sidepanel.open{transform:translateX(0)}
 .sidepanel-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 14px 10px;border-bottom:1px solid var(--line)}
@@ -152,9 +160,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 <div id="quizList"></div>
 </section>
 </div>
-<div id="viewFlash" class="view">
+<div id="viewFlash" class="view flash-page">
+<div class="flash-blob b1"></div><div class="flash-blob b2"></div>
+<div class="flash-shell">
 <section class="page-head"><div class="header-top"><h1>Flash Cards</h1><div class="row" style="margin:0"><button class="themeToggle alt" type="button">☀️ Day</button></div></div><div id="dateFlash"></div></section>
-<section class="card secondary"><h2>Flash Card Practice</h2>
+<section class="flash-controls"><h2>Flash Card Practice</h2>
 <div class="quiz-grid">
   <label for="flashDifficulty">Difficulty Filter<select id="flashDifficulty"><option value="__all">All levels</option></select></label>
   <label for="flashShowSec">Flash Card Time (sec)<input id="flashShowSec" type="number" min="5" max="300" value="20"></label>
@@ -163,6 +173,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 <div id="flashMsg" class="muted">Each card auto-advances in 20s. Hold card to pause. Swipe left/right for next/previous.</div>
 <div id="flashCard"></div>
 </section>
+</div>
 </div>
 </main>
 <div id="panelBackdrop" class="panelbackdrop"></div>
