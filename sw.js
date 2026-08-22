@@ -1,4 +1,4 @@
-const CACHE = "workout-tracker-v25-swap-edit-next";
+const CACHE = "workout-tracker-v26-hash-routes";
 const ASSETS = ["./", "./index.html", "./manifest.json"];
 
 self.addEventListener("install", (e) => {

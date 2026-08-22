@@ -616,7 +616,13 @@ function applyTheme(mode){
   if(m)m.setAttribute("content",mode==="day"?"#111827":"#020617");
 }
 function toggleTheme(){const next=document.body.classList.contains("day")?"night":"day";localStorage.setItem(THEMEKEY,next);applyTheme(next)}
-function setActiveView(view){
+function viewFromHash(){
+  const h=(location.hash||"").toLowerCase().replace(/^#\/?/,"");
+  if(h==="plan"||h==="quiz"||h==="workout")return h;
+  return "";
+}
+function setActiveView(view,opts={}){
+  const updateHash=opts.updateHash!==false;
   const mode=(view==="plan"||view==="quiz")?view:"workout";
   const isWorkout=mode==="workout",isPlan=mode==="plan",isQuiz=mode==="quiz";
   document.getElementById("viewWorkout").classList.toggle("active",isWorkout);
@@ -630,6 +636,10 @@ function setActiveView(view){
     panel.classList.remove("open");backdrop.classList.remove("show");panel.setAttribute("aria-hidden","true");
   }
   localStorage.setItem(VIEWKEY,mode);
+  if(updateHash){
+    const target=`#/${mode}`;
+    if(location.hash!==target)history.replaceState(null,"",target);
+  }
 }
 
 function adaptive(day,name,fallback){
@@ -1071,7 +1081,7 @@ function init(){
   renderQuizDifficulty();
   renderQuiz();
   clearPlanEditor();
-  setActiveView(localStorage.getItem(VIEWKEY)||"workout");
+  setActiveView(viewFromHash()||localStorage.getItem(VIEWKEY)||"workout",{updateHash:false});
 
   function setPanel(open){
     const panel=document.getElementById("settingsPanel"),backdrop=document.getElementById("panelBackdrop");
@@ -1083,6 +1093,7 @@ function init(){
   document.getElementById("showWorkoutView").onclick=()=>setActiveView("workout");
   document.getElementById("showPlanView").onclick=()=>setActiveView("plan");
   document.getElementById("showQuizView").onclick=()=>setActiveView("quiz");
+  window.addEventListener("hashchange",()=>{const v=viewFromHash();if(v)setActiveView(v,{updateHash:false})});
   document.getElementById("savePlan").onclick=savePlanEntry;
   document.getElementById("cancelPlanEdit").onclick=()=>{clearPlanEditor();document.getElementById("planMsg").innerHTML=""};
   document.getElementById("importQuiz").onclick=importQuizSheet;
