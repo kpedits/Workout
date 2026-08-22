@@ -59,6 +59,11 @@ details>div{margin-top:10px}
 .plan-actions{display:flex;gap:8px;flex-wrap:wrap}
 .plan-actions button{flex:1}
 #planNotes{min-height:120px;resize:vertical}
+.quiz-actions{display:flex;gap:8px;flex-wrap:wrap}
+.quiz-actions button{flex:1}
+.quiz-choice{display:flex;gap:8px;align-items:flex-start;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--surface);margin-top:8px}
+.quiz-choice input{width:auto;margin-top:2px}
+.quiz-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .sidepanel{position:fixed;top:0;right:0;height:100vh;width:min(520px,92vw);background:var(--card);border-left:1px solid var(--line);box-shadow:-8px 0 24px #0006;transform:translateX(100%);transition:transform .22s ease;z-index:40;display:flex;flex-direction:column}
 .sidepanel.open{transform:translateX(0)}
 .sidepanel-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 14px 10px;border-bottom:1px solid var(--line)}
@@ -74,6 +79,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
   .filterrow,.historyfilter{grid-template-columns:1fr 1fr}
   .filter-day,.filter-exercise,.historyfilter label:first-child{grid-column:1/-1}
   .plan-grid{grid-template-columns:1fr}
+  .quiz-grid{grid-template-columns:1fr}
 }
 </style></head>
 <body>
@@ -120,6 +126,17 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 <div id="planMsg" aria-live="polite"></div>
 </section>
 <section class="card secondary"><h2>Saved Plans</h2><div id="planList"></div></section>
+<section class="card secondary"><h2>Quiz (MCQ)</h2>
+<div class="quiz-grid">
+  <label for="quizFile">Import Quiz Sheet (CSV from Excel)<input id="quizFile" type="file" accept=".csv,.tsv,.txt,.xlsx,.xls"></label>
+  <label for="quizDifficulty">Difficulty Filter<select id="quizDifficulty"><option value="__all">All levels</option></select></label>
+</div>
+<div class="quiz-actions"><button id="importQuiz" type="button">Import Quiz</button><button id="quizNext" type="button" class="alt">Next Question</button><button id="clearQuiz" type="button" class="alt">Clear Quiz Data</button></div>
+<div id="quizMsg" aria-live="polite"></div>
+<div id="quizSummary" class="stats"></div>
+<div id="quizCard"></div>
+<div id="quizList"></div>
+</section>
 </div>
 </main>
 <div id="panelBackdrop" class="panelbackdrop"></div>
@@ -172,10 +189,11 @@ const BASE_PROGRAM={
 ["Hydration & Sleep","hold",0,0,"Recovery focus","Hydration and sleep"]]}
 };
 
-const DATAKEY="Workout Tracker",SETKEY="Workout Tracker Defaults",THEMEKEY="Workout Tracker Theme",PROGRAMKEY="Workout Tracker Program",PLANKEY="Workout Tracker Personal Plans",VIEWKEY="Workout Tracker Active View";
+const DATAKEY="Workout Tracker",SETKEY="Workout Tracker Defaults",THEMEKEY="Workout Tracker Theme",PROGRAMKEY="Workout Tracker Program",PLANKEY="Workout Tracker Personal Plans",QUIZKEY="Workout Tracker Quiz",VIEWKEY="Workout Tracker Active View";
 const SCHEMA=2;
 let timers={},workoutsCache=null;
 let PROGRAM=null;
+let quizCursor=0;
 
 function localISO(d=new Date()){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");return `${y}-${m}-${day}`}
 function fmt(s){s=Math.max(0,Math.round(s));return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")}
@@ -254,6 +272,182 @@ function loadPlans(){
 }
 function savePlans(plans){
   localStorage.setItem(PLANKEY,JSON.stringify({schema:SCHEMA,plans}));
+}
+function normalizeHeader(h){return String(h||"").toLowerCase().replace(/[^a-z0-9]/g,"")}
+function parseDelimited(text,delimiter){
+  const rows=[];let row=[],cell="",i=0,inQuotes=false;
+  while(i<text.length){
+    const ch=text[i];
+    if(ch==='"'){
+      if(inQuotes&&text[i+1]==='"'){cell+='"';i+=2;continue}
+      inQuotes=!inQuotes;i++;continue;
+    }
+    if(!inQuotes&&ch===delimiter){row.push(cell.trim());cell="";i++;continue}
+    if(!inQuotes&&(ch==="\n"||ch==="\r")){
+      if(ch==="\r"&&text[i+1]==="\n")i++;
+      row.push(cell.trim());rows.push(row);row=[];cell="";i++;continue;
+    }
+    cell+=ch;i++;
+  }
+  if(cell.length||row.length){row.push(cell.trim());rows.push(row)}
+  return rows.filter(r=>r.some(v=>String(v).trim()!==""));
+}
+function detectDelimiter(text){
+  const line=(String(text||"").split(/\r?\n/).find(x=>x.trim())||"");
+  const counts=[",","\t",";"].map(d=>({d,n:line.split(d).length}));
+  return counts.sort((a,b)=>b.n-a.n)[0]?.d||",";
+}
+function parseQuizRows(text){
+  const delimiter=detectDelimiter(text);
+  const rows=parseDelimited(text,delimiter);
+  if(rows.length<2)return [];
+  const heads=rows[0].map(normalizeHeader);
+  const pick=(...keys)=>heads.findIndex(h=>keys.includes(h));
+  const iSl=pick("slno","sno","serialno","sl");
+  const iQ=pick("question","questions");
+  const iC1=pick("choice1","option1","c1");
+  const iC2=pick("choice2","option2","c2");
+  const iC3=pick("choice3","option3","c3");
+  const iC4=pick("choice4","option4","c4");
+  const iA=pick("answer","correctanswer","ans");
+  const iN=pick("notes","note","explanation");
+  const iD=pick("difficultylevel","difficulty","level");
+  const iP=pick("pass","passed");
+  const iF=pick("fail","failed");
+  if(iQ<0||iC1<0||iC2<0||iA<0)return [];
+  return rows.slice(1).map((r,idx)=>{
+    const choices=[r[iC1]||"",r[iC2]||"",r[iC3]||"",r[iC4]||""].map(x=>String(x).trim()).filter(Boolean);
+    const answerRaw=String(r[iA]||"").trim();
+    const byNum=Math.max(0,Math.min(3,(+answerRaw||0)-1));
+    let answerIndex=(/^[1-4]$/.test(answerRaw)&&choices[byNum])?byNum:-1;
+    if(answerIndex<0){
+      const t=answerRaw.toLowerCase();
+      answerIndex=choices.findIndex(c=>c.toLowerCase()===t);
+    }
+    return {
+      id:uid("q"),
+      slNo:String(r[iSl]||idx+1),
+      question:String(r[iQ]||"").trim(),
+      choices:choices.slice(0,4),
+      answerIndex,
+      answerText:answerRaw,
+      notes:String(r[iN]||"").trim(),
+      difficulty:String(r[iD]||"General").trim()||"General",
+      pass:Math.max(0,+r[iP]||0),
+      fail:Math.max(0,+r[iF]||0)
+    };
+  }).filter(q=>q.question&&q.choices.length>=2);
+}
+function loadQuiz(){
+  const raw=readJson(QUIZKEY,{schema:SCHEMA,questions:[]});
+  const questions=Array.isArray(raw)?raw:Array.isArray(raw.questions)?raw.questions:[];
+  return questions.map((q,idx)=>({
+    id:String(q?.id||uid("q"+idx)),
+    slNo:String(q?.slNo||idx+1),
+    question:String(q?.question||""),
+    choices:Array.isArray(q?.choices)?q.choices.map(x=>String(x||"")).filter(Boolean).slice(0,4):[],
+    answerIndex:Number.isInteger(q?.answerIndex)?q.answerIndex:-1,
+    answerText:String(q?.answerText||""),
+    notes:String(q?.notes||""),
+    difficulty:String(q?.difficulty||"General"),
+    pass:Math.max(0,+q?.pass||0),
+    fail:Math.max(0,+q?.fail||0)
+  })).filter(q=>q.question&&q.choices.length>=2);
+}
+function saveQuiz(questions){
+  localStorage.setItem(QUIZKEY,JSON.stringify({schema:SCHEMA,questions}));
+}
+function escHtml(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+function quizFiltered(){
+  const all=loadQuiz();
+  const level=document.getElementById("quizDifficulty")?.value||"__all";
+  return level==="__all"?all:all.filter(q=>q.difficulty===level);
+}
+function renderQuizDifficulty(){
+  const select=document.getElementById("quizDifficulty");
+  if(!select)return;
+  const prev=select.value||"__all";
+  const levels=[...new Set(loadQuiz().map(q=>q.difficulty).filter(Boolean))];
+  select.innerHTML='<option value="__all">All levels</option>'+levels.map(l=>`<option value="${escHtml(l)}">${escHtml(l)}</option>`).join("");
+  select.value=[...select.options].some(o=>o.value===prev)?prev:"__all";
+}
+function renderQuiz(){
+  const list=quizFiltered();
+  const summary=document.getElementById("quizSummary"),card=document.getElementById("quizCard"),rows=document.getElementById("quizList");
+  if(!summary||!card||!rows)return;
+  const all=loadQuiz();
+  const pass=all.reduce((s,q)=>s+q.pass,0),fail=all.reduce((s,q)=>s+q.fail,0),attempts=pass+fail,accuracy=attempts?Math.round(pass*100/attempts):0;
+  summary.innerHTML=`<div class="stat"><b>${all.length}</b>questions</div><div class="stat"><b>${pass}</b>pass</div><div class="stat"><b>${fail}</b>fail</div>`;
+  if(!all.length){
+    card.innerHTML="<p class='muted'>Import a CSV sheet with columns: sl.no, question, choice1..4, answer, notes, difficulty level, pass, fail.</p>";
+    rows.innerHTML="";
+    return;
+  }
+  if(!list.length){
+    card.innerHTML="<p class='muted'>No questions for selected difficulty.</p>";
+    rows.innerHTML="";
+    return;
+  }
+  if(quizCursor>=list.length)quizCursor=0;
+  const q=list[quizCursor];
+  card.innerHTML=`<div class="card secondary"><h3>Q${quizCursor+1}/${list.length} · #${escHtml(q.slNo)} · ${escHtml(q.difficulty)}</h3><p><b>${escHtml(q.question)}</b></p>${q.choices.map((c,i)=>`<label class="quiz-choice" for="quizChoice${i}"><input id="quizChoice${i}" name="quizChoice" type="radio" value="${i}"><span>${escHtml(c)}</span></label>`).join("")}<div class="quiz-actions"><button id="quizSubmit" type="button">Submit Answer</button></div><div class="muted">Pass: ${q.pass} · Fail: ${q.fail} · Accuracy: ${accuracy}%</div>${q.notes?`<div class="muted">Notes: ${escHtml(q.notes)}</div>`:""}</div>`;
+  const top=[...all].sort((a,b)=>(b.pass+b.fail)-(a.pass+a.fail)).slice(0,12);
+  rows.innerHTML=top.map(qx=>`<div class="history"><b>#${escHtml(qx.slNo)} ${escHtml(qx.question)}</b><br><span class="muted">${escHtml(qx.difficulty)} · Pass ${qx.pass} · Fail ${qx.fail}</span></div>`).join("");
+  const submit=document.getElementById("quizSubmit");
+  if(submit)submit.onclick=submitQuizAnswer;
+}
+function importQuizSheet(){
+  const f=document.getElementById("quizFile")?.files?.[0];
+  if(!f){document.getElementById("quizMsg").innerHTML="<div class='muted'>Select a file first.</div>";return}
+  const name=String(f.name||"").toLowerCase();
+  if(name.endsWith(".xlsx")||name.endsWith(".xls")){
+    document.getElementById("quizMsg").innerHTML="<div class='muted'>Upload CSV/TSV exported from Excel. Native .xlsx/.xls is not supported in this offline app.</div>";
+    return;
+  }
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const parsed=parseQuizRows(String(reader.result||""));
+    if(!parsed.length){document.getElementById("quizMsg").innerHTML="<div class='muted'>No valid quiz rows found. Check required columns.</div>";return}
+    saveQuiz(parsed);
+    quizCursor=0;
+    renderQuizDifficulty();
+    renderQuiz();
+    document.getElementById("quizMsg").innerHTML=`<div class="ok">✓ Imported ${parsed.length} quiz questions.</div>`;
+  };
+  reader.onerror=()=>{document.getElementById("quizMsg").innerHTML="<div class='muted'>Could not read file.</div>"};
+  reader.readAsText(f);
+}
+function submitQuizAnswer(){
+  const choice=document.querySelector('input[name="quizChoice"]:checked');
+  if(!choice){document.getElementById("quizMsg").innerHTML="<div class='muted'>Select one choice.</div>";return}
+  const selected=+choice.value;
+  const filtered=quizFiltered();
+  if(!filtered.length)return;
+  const current=filtered[quizCursor];
+  const all=loadQuiz();
+  const idx=all.findIndex(q=>q.id===current.id);
+  if(idx<0)return;
+  const q=all[idx];
+  const correct=q.answerIndex>=0?selected===q.answerIndex:String(q.choices[selected]||"").trim().toLowerCase()===String(q.answerText||"").trim().toLowerCase();
+  if(correct)q.pass+=1;else q.fail+=1;
+  saveQuiz(all);
+  const right=q.answerIndex>=0?q.choices[q.answerIndex]:(q.answerText||"");
+  document.getElementById("quizMsg").innerHTML=`<div class="${correct?"ok":"muted"}">${correct?"Correct":"Wrong"} · Right answer: ${escHtml(right)}${q.notes?` · ${escHtml(q.notes)}`:""}</div>`;
+  renderQuiz();
+}
+function nextQuiz(){
+  const count=quizFiltered().length;
+  if(!count)return;
+  quizCursor=(quizCursor+1)%count;
+  renderQuiz();
+}
+function clearQuizData(){
+  if(!confirm("Delete all quiz questions and pass/fail tracking?"))return;
+  saveQuiz([]);
+  quizCursor=0;
+  renderQuizDifficulty();
+  renderQuiz();
+  document.getElementById("quizMsg").innerHTML="<div class='ok'>✓ Quiz data cleared.</div>";
 }
 function migrateWorkouts(raw){
   if(Array.isArray(raw)) return {schema:SCHEMA,workouts:raw};
@@ -735,6 +929,8 @@ function init(){
   const dow=new Date().getDay(),todayDay=dow===0?7:dow;document.getElementById('dayPick').value=todayDay;document.getElementById('progressDay').value=todayDay;
   renderProgressExerciseOptions();populateHistoryFilters();renderExerciseManager();
   renderPlans();
+  renderQuizDifficulty();
+  renderQuiz();
   clearPlanEditor();
   setActiveView(localStorage.getItem(VIEWKEY)==="plan"?"plan":"workout");
 
@@ -749,6 +945,10 @@ function init(){
   document.getElementById("showPlanView").onclick=()=>setActiveView("plan");
   document.getElementById("savePlan").onclick=savePlanEntry;
   document.getElementById("cancelPlanEdit").onclick=()=>{clearPlanEditor();document.getElementById("planMsg").innerHTML=""};
+  document.getElementById("importQuiz").onclick=importQuizSheet;
+  document.getElementById("quizNext").onclick=nextQuiz;
+  document.getElementById("clearQuiz").onclick=clearQuizData;
+  document.getElementById("quizDifficulty").onchange=()=>{quizCursor=0;renderQuiz();};
 
   document.getElementById('dayPick').onchange=()=>{const v=document.getElementById('dayPick').value;document.getElementById('progressDay').value=v;renderProgressExerciseOptions();render();renderSettings();renderExerciseManager();renderProgress()};
   document.getElementById('progressDay').onchange=()=>{renderProgressExerciseOptions();renderProgress()};
@@ -759,19 +959,19 @@ function init(){
 
   document.getElementById('export').onclick=async()=>{
     const now=new Date(),dd=String(now.getDate()).padStart(2,"0"),mm=String(now.getMonth()+1).padStart(2,"0"),yyyy=now.getFullYear(),day=+document.getElementById('dayPick').value,filename=`Workout_Day${day}_${dd}_${mm}_${yyyy}.json`;
-    const payload=JSON.stringify({schema:SCHEMA,workouts:load(),defaults:defaults(),program:PROGRAM},null,2),msg=document.getElementById('msg');
+    const payload=JSON.stringify({schema:SCHEMA,workouts:load(),defaults:defaults(),program:PROGRAM,plans:loadPlans(),quiz:loadQuiz()},null,2),msg=document.getElementById('msg');
     if(window.showSaveFilePicker){try{const h=await window.showSaveFilePicker({suggestedName:filename,types:[{description:"JSON",accept:{"application/json":[".json"]}}]}),w=await h.createWritable();await w.write(payload);await w.close();msg.innerHTML='<div class="ok">✓ Exported using save picker.</div>';return}catch(e){if(e?.name==="AbortError")return}}
     const b=new Blob([payload],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);msg.innerHTML='<div class="muted">Save picker not supported here. File downloaded using browser fallback.</div>';
   };
 
   document.getElementById('import').onclick=()=>document.getElementById('file').click();
-  document.getElementById('file').onchange=async e=>{try{const f=e.target.files?.[0];if(!f)return;const x=JSON.parse(await f.text());const migrated=migrateWorkouts(Array.isArray(x)?x:(x.workouts||[]));store(migrated.workouts);if(x.defaults)localStorage.setItem(SETKEY,JSON.stringify({...x.defaults,schema:SCHEMA}));if(x.program)saveProgram(x.program);alert("Imported");location.reload()}catch{alert("Invalid backup")}};
+  document.getElementById('file').onchange=async e=>{try{const f=e.target.files?.[0];if(!f)return;const x=JSON.parse(await f.text());const migrated=migrateWorkouts(Array.isArray(x)?x:(x.workouts||[]));store(migrated.workouts);if(x.defaults)localStorage.setItem(SETKEY,JSON.stringify({...x.defaults,schema:SCHEMA}));if(x.program)saveProgram(x.program);if(x.plans)savePlans(Array.isArray(x.plans)?x.plans:(x.plans.plans||[]));if(x.quiz)saveQuiz(Array.isArray(x.quiz)?x.quiz:(x.quiz.questions||[]));alert("Imported");location.reload()}catch{alert("Invalid backup")}};
 
   const now=new Date(),fromDefault=new Date(now);fromDefault.setMonth(fromDefault.getMonth()-1);document.getElementById('fromDate').value=localISO(fromDefault);document.getElementById('toDate').value=localISO(now);document.getElementById('historyFrom').value=localISO(fromDefault);document.getElementById('historyTo').value=localISO(now);
   document.getElementById('fromDate').onchange=renderProgress;document.getElementById('toDate').onchange=renderProgress;
   document.getElementById('demoData').onclick=()=>{if(confirm("Add 3 weeks of demo data for graph testing?"))addDemoData()};
   document.getElementById('cancelEdit').onclick=()=>{document.getElementById('save').dataset.editId="";document.getElementById('save').textContent='✓ DONE — SAVE WORKOUT';document.getElementById('cancelEdit').style.display='none';document.getElementById('msg').innerHTML='';render()};
-  document.getElementById('clear').onclick=()=>{if(confirm("Delete all workout history, defaults, and program setup?")){localStorage.removeItem(DATAKEY);localStorage.removeItem(SETKEY);localStorage.removeItem(PROGRAMKEY);workoutsCache=[];location.reload()}};
+  document.getElementById('clear').onclick=()=>{if(confirm("Delete workout, personal plans, quiz data, defaults, and program setup?")){localStorage.removeItem(DATAKEY);localStorage.removeItem(SETKEY);localStorage.removeItem(PROGRAMKEY);localStorage.removeItem(PLANKEY);localStorage.removeItem(QUIZKEY);workoutsCache=[];location.reload()}};
   document.addEventListener("keydown",handleShortcuts);
   if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{})}
   render();renderSettings();renderHistory();renderStats();renderProgress();

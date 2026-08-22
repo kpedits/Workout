@@ -1,4 +1,4 @@
-const CACHE = "workout-tracker-v17-page-headers-split";
+const CACHE = "workout-tracker-v18-quiz-section";
 const ASSETS = ["./", "./index.html", "./manifest.json"];
 
 self.addEventListener("install", (e) => {
