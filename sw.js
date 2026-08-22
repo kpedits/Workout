@@ -1,4 +1,4 @@
-const CACHE = "workout-tracker-v37-flash-fullpage-animated";
+const CACHE = "workout-tracker-v40-global-ui-refresh";
 const ASSETS = ["./", "./index.html", "./manifest.json"];
 
 self.addEventListener("install", (e) => {
